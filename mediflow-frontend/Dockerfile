@@ -3,8 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Set memory limits and use swap
+ENV NODE_OPTIONS="--max-old-space-size=512"
+
 COPY package*.json ./
-RUN npm ci
+# Use npm install instead of npm ci for better memory efficiency
+RUN npm install --no-optional --prefer-offline --legacy-peer-deps
 
 COPY . .
 RUN npm run build
