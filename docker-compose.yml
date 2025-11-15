@@ -52,7 +52,7 @@ services:
   frontend:
     build:
       context: ./mediflow-frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.simple
     container_name: mediflow-frontend
     restart: unless-stopped
     ports:

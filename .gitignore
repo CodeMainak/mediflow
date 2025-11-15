@@ -9,6 +9,8 @@ coverage/
 # Production
 build/
 dist/
+# Allow frontend build for deployment on low-memory servers
+!mediflow-frontend/build/
 
 # Environment variables
 .env
