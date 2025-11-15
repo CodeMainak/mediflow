@@ -7,6 +7,25 @@ A production-grade MERN stack application for managing healthcare workflows, pat
 ![Node](https://img.shields.io/badge/Node-20.x-green)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green)
 
+## 🚀 Live Demo
+
+**Live Application:** [http://51.20.67.65](http://51.20.67.65)
+
+### Demo Accounts
+
+Test the application with these pre-configured accounts:
+
+| Role | Email | Password | Description |
+|------|-------|----------|-------------|
+| **Admin** | admin@mediflow.com | password123 | Full system access, user management |
+| **Doctor** | dr.smith@mediflow.com | password123 | Manage appointments, prescriptions |
+| **Doctor** | gourab.das@gmail.com | Mainak@123 | Alternative doctor account |
+| **Patient** | jane.doe@email.com | password123 | Book appointments, view records |
+| **Patient** | mainak.mondal33@gmail.com | Mainak@123 | Alternative patient account |
+| **Receptionist** | receptionist@mediflow.com | password123 | Check-in patients, manage appointments |
+
+> **Note:** This is a demo application. Please don't use real personal information.
+
 ## Table of Contents
 
 - [Features](#features)
