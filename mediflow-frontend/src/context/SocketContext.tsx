@@ -34,7 +34,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const token = localStorage.getItem('token');
 
     if (token && user) {
-      const newSocket = io('http://localhost:8000', {
+      const newSocket = io('', {  // Relative URL - nginx will proxy
         auth: {
           token,
         },

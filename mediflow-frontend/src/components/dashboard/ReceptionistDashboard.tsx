@@ -94,7 +94,7 @@ export const ReceptionistDashboard: React.FC = () => {
   useEffect(() => {
     const fetchPatients = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/admin/users?role=Patient', {
+        const response = await fetch('/api/admin/users?role=Patient', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },

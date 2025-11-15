@@ -79,7 +79,7 @@ export const CheckInPatientForm: React.FC<CheckInPatientFormProps> = ({ onSucces
       const checkInTime = new Date().toISOString();
 
       const response = await fetch(
-        `http://localhost:8000/api/appointments/${selectedAppointmentId}/checkin`,
+        `/api/appointments/${selectedAppointmentId}/checkin`,
         {
           method: 'PATCH',
           headers: {

@@ -102,7 +102,7 @@ export const AddDoctorForm: React.FC<AddDoctorFormProps> = ({ onSuccess, onCance
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/admin/users', {
+      const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

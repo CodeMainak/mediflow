@@ -91,7 +91,7 @@ export const AddPatientForm: React.FC<AddPatientFormProps> = ({ onSuccess, onCan
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/admin/users', {
+      const response = await fetch('/api/admin/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
