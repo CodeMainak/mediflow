@@ -1,0 +1,32 @@
+# AWS Configuration
+aws_region  = "us-east-1"
+environment = "production"
+
+# MongoDB Credentials (CHANGE THESE!)
+mongo_username = "admin"
+mongo_password = "your-secure-mongodb-password-here"
+
+# JWT Secret (CHANGE THIS!)
+jwt_secret = "your-super-secret-jwt-key-change-this-in-production"
+
+# Email Configuration (Optional)
+email_user     = ""
+email_password = ""
+
+# Twilio Configuration (Optional)
+twilio_account_sid   = ""
+twilio_auth_token    = ""
+twilio_phone_number  = ""
+
+# Domain Configuration (Optional - for custom domain)
+domain_name = ""
+
+# Resource Configuration (adjust based on your needs)
+backend_cpu    = 512
+backend_memory = 1024
+
+frontend_cpu    = 256
+frontend_memory = 512
+
+mongodb_cpu    = 512
+mongodb_memory = 1024
