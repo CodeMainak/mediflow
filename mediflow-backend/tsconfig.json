@@ -3,7 +3,7 @@
     // File Layout
     "module": "commonjs",
     "target": "esnext",
-    "rootDir": "./src",
+    "rootDir": ".",
     "outDir": "./dist",
     // Environment Settings
     "lib": [
