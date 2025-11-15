@@ -8,7 +8,7 @@ ENV NODE_OPTIONS="--max-old-space-size=512"
 
 COPY package*.json ./
 # Use npm install instead of npm ci for better memory efficiency
-RUN npm install --no-optional --prefer-offline --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 COPY . .
 RUN npm run build
