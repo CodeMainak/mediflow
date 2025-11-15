@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "http://localhost:8000",
+    baseURL: "",  // Use relative URLs - nginx will proxy to backend
 });
 
 api.interceptors.request.use((config) => {
