@@ -9,7 +9,11 @@ A production-grade MERN stack application for managing healthcare workflows, pat
 
 ## 🚀 Live Demo
 
-**Live Application:** [http://51.20.67.65](http://51.20.67.65)
+**Live Application:** [https://mediflow-mainak.com](https://mediflow-mainak.com) 🔒
+
+> ✅ Secured with SSL/TLS encryption
+> ✅ Custom domain with HTTPS
+> ✅ Production-ready deployment
 
 ### Demo Accounts
 
