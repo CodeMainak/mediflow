@@ -166,7 +166,7 @@ export const LoginForm: React.FC = () => {
                 Demo Accounts
               </CardTitle>
               <CardDescription className="text-green-700">
-                Click to use demo credentials (password: password123)
+                Click to use demo credentials (passwords auto-filled)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -179,7 +179,7 @@ export const LoginForm: React.FC = () => {
                     className="w-full justify-start hover:bg-green-50 border-green-200 p-4 h-auto group transition-all duration-200 hover:shadow-md"
                     onClick={() => {
                       setEmail(cred.email);
-                      setPassword('Mainak@123');
+                      setPassword(cred.email === 'admin@mediflow.com' ? 'password123' : 'Mainak@123');
                     }}
                   >
                     <div className="bg-gradient-to-br from-green-100 to-emerald-100 p-2 rounded-lg mr-3 group-hover:from-green-200 group-hover:to-emerald-200 transition-all">
