@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-    baseURL: "",  // Use relative URLs - nginx will proxy to backend
+    baseURL: import.meta.env.DEV ? "http://localhost:8000" : "",  // Use localhost for dev, relative URLs for production (nginx proxy)
 });
 
 api.interceptors.request.use((config) => {

@@ -160,7 +160,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 >
                   <Avatar className="h-10 w-10 mr-2 ring-2 ring-green-500">
                     <AvatarFallback>
-                      {user?.name.split(" ").map((n: string) => n[0]).join("")}
+                      {user?.name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <div className="text-left flex-1">
@@ -219,7 +219,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   </div>
                   <Avatar className="h-9 w-9 ring-2 ring-green-500">
                     <AvatarFallback className="bg-green-100 text-green-700 font-semibold text-sm">
-                      {user?.name.split(" ").map((n: string) => n[0]).join("")}
+                      {user?.name?.split(" ").map((n: string) => n[0]).join("") || "U"}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -261,7 +261,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           {/* <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border my-2">
             <Avatar className="h-10 w-10 ring-2 ring-green-500">
               <AvatarFallback className="bg-green-100 text-green-700 font-semibold text-sm">
-                {user?.name.split(" ").map((n: string) => n[0]).join("")}
+                {user?.name?.split(" ").map((n: string) => n[0]).join("") || "U"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
