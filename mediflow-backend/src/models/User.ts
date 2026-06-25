@@ -4,7 +4,7 @@ export interface IUser extends Document {
     name: string;
     email: string;
     password: string;
-    role: "Doctor" | "Patient" | "Receptionist" | "Admin";
+    role: "Doctor" | "Patient" | "Receptionist" | "Admin" | "Pharmacist";
     specialization?: string; // For doctors
     phone?: string;
     address?: string;
@@ -28,7 +28,7 @@ const userSchema = new Schema<IUser>(
         password: { type: String, required: true },
         role: {
             type: String,
-            enum: ["Doctor", "Patient", "Receptionist", "Admin"],
+            enum: ["Doctor", "Patient", "Receptionist", "Admin", "Pharmacist"],
             required: true,
         },
         specialization: { type: String }, // For doctors

@@ -18,6 +18,8 @@ const AppointmentManager = lazy(() => import('./components/appointments/Appointm
 const PrescriptionManager = lazy(() => import('./components/prescriptions/PrescriptionManager').then(module => ({ default: module.PrescriptionManager })));
 const ProfileSettings = lazy(() => import('./components/profile/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
 const ChatManager = lazy(() => import('./components/chat/ChatManager').then(module => ({ default: module.ChatManager })));
+const PharmacyDashboard = lazy(() => import('./components/pharmacy/PharmacyDashboard').then(module => ({ default: module.PharmacyDashboard })));
+const AddPatientForm = lazy(() => import('./components/forms/AddPatientForm').then(module => ({ default: module.AddPatientForm })));
 
 // Loading component
 const PageLoader = () => (
@@ -80,6 +82,7 @@ const DashboardRoutes: React.FC = () => {
     if (path === '/profile') return 'profile';
     if (path === '/settings') return 'settings';
     if (path === '/add-patient') return 'add-patient';
+    if (path.startsWith('/pharmacy')) return 'pharmacy';
     return 'dashboard';
   };
 
@@ -96,6 +99,8 @@ const DashboardRoutes: React.FC = () => {
       case 'Receptionist':
       case 'Admin':
         return <ReceptionistDashboard />;
+      case 'Pharmacist':
+        return <PharmacyDashboard />;
       default:
         return <div>Unknown role</div>;
     }
@@ -111,22 +116,22 @@ const DashboardRoutes: React.FC = () => {
           <Route path="/appointments" element={<RouteErrorBoundary routeName="Appointments"><AppointmentManager /></RouteErrorBoundary>} />
           <Route path="/prescriptions" element={<RouteErrorBoundary routeName="Prescriptions"><PrescriptionManager /></RouteErrorBoundary>} />
           <Route path="/messages" element={<RouteErrorBoundary routeName="Messages"><ChatManager /></RouteErrorBoundary>} />
+          <Route path="/pharmacy/*" element={<RouteErrorBoundary routeName="Pharmacy"><PharmacyDashboard /></RouteErrorBoundary>} />
           <Route path="/profile" element={<RouteErrorBoundary routeName="Profile"><ProfileSettings /></RouteErrorBoundary>} />
           <Route path="/settings" element={<RouteErrorBoundary routeName="Settings"><ProfileSettings /></RouteErrorBoundary>} />
           <Route path="/add-patient" element={
-            <div className="space-y-6">
-              <div>
-                <h2>Add New Patient</h2>
-                <p className="text-muted-foreground">Register a new patient in the system</p>
-              </div>
-              <div className="max-w-2xl">
-                <div className="p-8 border-2 border-dashed border-muted rounded-lg text-center">
-                  <p className="text-muted-foreground">
-                    Patient registration form would be implemented here with proper form validation and Supabase integration.
-                  </p>
+            <RouteErrorBoundary routeName="Add Patient">
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Add New Patient</h2>
+                  <p className="text-sm text-gray-500 mt-1">Register a new patient in the system</p>
                 </div>
+                <AddPatientForm
+                  onSuccess={() => { navigate('/patients'); }}
+                  onCancel={() => navigate(-1)}
+                />
               </div>
-            </div>
+            </RouteErrorBoundary>
           } />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

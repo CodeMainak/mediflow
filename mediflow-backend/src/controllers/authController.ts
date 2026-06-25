@@ -13,7 +13,7 @@ interface SignupRequest extends Request {
         name: string;
         email: string;
         password: string;
-        role: "Doctor" | "Patient" | "Receptionist";
+        role: "Doctor" | "Patient" | "Receptionist" | "Admin" | "Pharmacist";
     };
 }
 

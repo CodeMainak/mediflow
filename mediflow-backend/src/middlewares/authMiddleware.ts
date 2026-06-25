@@ -101,7 +101,7 @@ export const doctorOnly = (req: AuthRequest, res: Response, next: NextFunction):
 };
 
 
-export const onlyRole = (roles: ("Doctor" | "Patient" | "Receptionist" | "Admin")[]) => {
+export const onlyRole = (roles: ("Doctor" | "Patient" | "Receptionist" | "Admin" | "Pharmacist")[]) => {
     return (req: AuthRequest, res: Response, next: NextFunction): void => {
         const user = req.user as IUser | undefined;
         if (!user || !roles.includes(user.role)) {

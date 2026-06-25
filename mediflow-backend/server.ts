@@ -14,6 +14,7 @@ import messageRoutes from "./src/routes/messageRoutes";
 import notificationRoutes from "./src/routes/notificationRoutes";
 import adminRoutes from "./src/routes/adminRoutes";
 import doctorRoutes from "./src/routes/doctorRoutes";
+import pharmacyRoutes from "./src/routes/pharmacyRoutes";
 
 // Middleware
 import {
@@ -39,9 +40,25 @@ initializeSocket(server);
 app.use(helmetMiddleware);
 
 // CORS Configuration
+const allowedOrigins = [
+    process.env['FRONTEND_URL'] || "http://localhost:3000",
+    "https://mediflow-mainak.com",
+    "https://www.mediflow-mainak.com",
+    "http://localhost:3000",
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: process.env['FRONTEND_URL'] || "http://localhost:3000",
+        origin: (origin, callback) => {
+            // Allow requests with no origin (mobile apps, Postman, etc)
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
         credentials: true,
     })
 );
@@ -65,6 +82,7 @@ app.use("/api/messages", messageRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/doctors", doctorRoutes);
+app.use("/api/pharmacy", pharmacyRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -93,7 +111,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 const PORT = process.env['PORT'] || 8000;
 server.listen(PORT, () => {
-
+    console.log(`MediFlow backend running on http://localhost:${PORT}`);
     // Start appointment reminder scheduler
     startReminderScheduler();
 });

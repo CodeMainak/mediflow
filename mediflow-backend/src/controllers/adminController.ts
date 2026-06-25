@@ -72,7 +72,11 @@ export const getUserById = async (req: Request, res: Response): Promise<void> =>
 // Create a new user
 export const createUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, email, password, role, specialization, phone, address } = req.body;
+        const {
+            name, email, password, role, specialization,
+            phone, address, dateOfBirth, gender, bloodGroup,
+            allergies, emergencyContact,
+        } = req.body;
 
         // Check if user already exists
         const existingUser = await User.findOne({ email });
@@ -90,9 +94,14 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
             email,
             password: hashedPassword,
             role,
-            specialization,
-            phone,
-            address,
+            ...(specialization && { specialization }),
+            ...(phone && { phone }),
+            ...(address && { address }),
+            ...(dateOfBirth && { dateOfBirth }),
+            ...(gender && { gender }),
+            ...(bloodGroup && { bloodGroup }),
+            ...(allergies && { allergies }),
+            ...(emergencyContact && { emergencyContact }),
         });
 
         const userResponse = await User.findById(user._id).select("-password");

@@ -43,6 +43,14 @@ Thumbs.db
 uploads/*
 !uploads/.gitkeep
 
+# Terraform secrets
+aws-deployment/terraform/terraform.tfvars
+aws-deployment/terraform/.terraform/
+aws-deployment/terraform/tfplan
+aws-deployment/terraform/terraform.tfstate
+aws-deployment/terraform/terraform.tfstate.backup
+aws-deployment/terraform/*.tfstate.*
+
 # Misc
 *.tsbuildinfo
 .cache

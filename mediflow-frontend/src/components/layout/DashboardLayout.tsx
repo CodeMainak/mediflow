@@ -38,6 +38,10 @@ import {
   Activity,
   User,
   MessageSquare,
+  Package,
+  ShoppingCart,
+  AlertTriangle,
+  BarChart3,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -82,12 +86,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           { id: "profile", label: "My Profile", icon: User },
         ];
       case "receptionist":
+        return [
+          ...baseItems,
+          { id: "patients", label: "All Patients", icon: Users },
+          { id: "appointments", label: "All Appointments", icon: Calendar },
+          { id: "add-patient", label: "Add Patient", icon: UserPlus },
+          { id: "pharmacy", label: "Pharmacy Sales", icon: ShoppingCart },
+        ];
       case "admin":
         return [
           ...baseItems,
           { id: "patients", label: "All Patients", icon: Users },
           { id: "appointments", label: "All Appointments", icon: Calendar },
           { id: "add-patient", label: "Add Patient", icon: UserPlus },
+          { id: "pharmacy", label: "Pharmacy", icon: Package },
+        ];
+      case "pharmacist":
+        return [
+          ...baseItems,
+          { id: "pharmacy", label: "Pharmacy", icon: Package },
+          { id: "pharmacy/inventory", label: "Inventory", icon: Package },
+          { id: "pharmacy/sales", label: "Sales", icon: ShoppingCart },
+          { id: "pharmacy/alerts", label: "Alerts", icon: AlertTriangle },
+          { id: "pharmacy/reports", label: "Reports", icon: BarChart3 },
         ];
       default:
         return baseItems;
@@ -97,13 +118,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const navItems = getNavItems();
 
   const getRoleColor = (role: string) => {
-    switch (role) {
+    switch (role?.toLowerCase()) {
       case "doctor":
         return "bg-green-100 text-green-800";
       case "patient":
         return "bg-blue-100 text-blue-800";
       case "receptionist":
         return "bg-purple-100 text-purple-800";
+      case "admin":
+        return "bg-red-100 text-red-800";
+      case "pharmacist":
+        return "bg-teal-100 text-teal-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -232,7 +257,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                   className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Logout</span>
+                  <span>Logout</span>
                 </Button>
               </div>
             </div>
