@@ -2,7 +2,6 @@ services:
   - type: web
     name: mediflow-backend
     env: node
-    region: singapore
     rootDir: mediflow-backend
     buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm start
