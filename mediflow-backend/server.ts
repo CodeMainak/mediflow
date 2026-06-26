@@ -42,6 +42,7 @@ app.use(helmetMiddleware);
 // CORS Configuration
 const allowedOrigins = [
     process.env['FRONTEND_URL'] || "http://localhost:3000",
+    "https://mediflow-frontend-sigma.vercel.app",
     "https://mediflow-mainak.com",
     "https://www.mediflow-mainak.com",
     "http://localhost:3000",
