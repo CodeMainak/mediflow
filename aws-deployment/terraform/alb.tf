@@ -67,11 +67,30 @@ resource "aws_lb_target_group" "backend" {
   }
 }
 
-# HTTP Listener (Port 80)
+# HTTP Listener (Port 80) - Redirect to HTTPS
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+# HTTPS Listener (Port 443)
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
 
   default_action {
     type             = "forward"
@@ -79,9 +98,9 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# Listener Rule for Backend API
+# Listener Rule for Backend API (HTTPS)
 resource "aws_lb_listener_rule" "backend_api" {
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = aws_lb_listener.https.arn
   priority     = 100
 
   action {
@@ -96,9 +115,9 @@ resource "aws_lb_listener_rule" "backend_api" {
   }
 }
 
-# Listener Rule for WebSocket
+# Listener Rule for WebSocket (HTTPS)
 resource "aws_lb_listener_rule" "websocket" {
-  listener_arn = aws_lb_listener.http.arn
+  listener_arn = aws_lb_listener.https.arn
   priority     = 90
 
   action {

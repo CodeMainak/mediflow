@@ -52,3 +52,13 @@ output "cloudwatch_log_group_frontend" {
   description = "CloudWatch log group for frontend"
   value       = aws_cloudwatch_log_group.frontend.name
 }
+
+output "route53_nameservers" {
+  description = "Route53 nameservers to configure at your domain registrar"
+  value       = var.domain_name != "" ? aws_route53_zone.main[0].name_servers : []
+}
+
+output "domain_url" {
+  description = "Your application URL"
+  value       = var.domain_name != "" ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
+}

@@ -18,10 +18,8 @@ resource "aws_ecs_service" "mongodb" {
 
   enable_execute_command = true
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   tags = {
     Name = "${var.project_name}-mongodb-service"
@@ -56,10 +54,8 @@ resource "aws_ecs_service" "backend" {
 
   enable_execute_command = true
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   tags = {
     Name = "${var.project_name}-backend-service"
@@ -93,10 +89,8 @@ resource "aws_ecs_service" "frontend" {
 
   enable_execute_command = true
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   tags = {
     Name = "${var.project_name}-frontend-service"
