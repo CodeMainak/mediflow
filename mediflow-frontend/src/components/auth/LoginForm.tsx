@@ -25,10 +25,12 @@ export const LoginForm: React.FC = () => {
   };
 
   const demoCredentials = [
-    { role: 'Admin', email: 'admin@mediflow.com', name: 'Admin User', icon: Shield, color: 'text-red-600' },
-    { role: 'Doctor', email: 'gourab.das@gmail.com', name: 'Gourab Das', icon: Stethoscope, color: 'text-green-600' },
-    { role: 'Patient', email: 'mainak.mondal33@gmail.com', name: 'Mainak Mondal', icon: Heart, color: 'text-emerald-600' },
-    // { role: 'Receptionist', email: 'receptionist@mediflow.com', name: 'Lisa Wilson', icon: Activity, color: 'text-teal-600' }
+    { role: 'Admin',        email: 'admin@mediflow.com',         password: 'password123', name: 'Admin User',       icon: Shield,       color: 'text-red-600'     },
+    { role: 'Admin',        email: 'mainak.mondal33@gmail.com',  password: 'Mainak@123',  name: 'Mainak Mondal',    icon: Shield,       color: 'text-red-500'     },
+    { role: 'Doctor',       email: 'dr.smith@mediflow.com',      password: 'password123', name: 'Dr. John Smith',   icon: Stethoscope,  color: 'text-green-600'   },
+    { role: 'Patient',      email: 'jane.doe@email.com',         password: 'password123', name: 'Jane Doe',         icon: Heart,        color: 'text-emerald-600' },
+    { role: 'Receptionist', email: 'receptionist@mediflow.com',  password: 'password123', name: 'Alice (Front Desk)', icon: Activity,   color: 'text-teal-600'   },
+    { role: 'Pharmacist',   email: 'pharmacist@mediflow.com',    password: 'password123', name: 'Bob (Pharmacy)',   icon: Activity,     color: 'text-blue-600'    },
   ];
 
   return (
@@ -179,7 +181,7 @@ export const LoginForm: React.FC = () => {
                     className="w-full justify-start hover:bg-green-50 border-green-200 p-4 h-auto group transition-all duration-200 hover:shadow-md"
                     onClick={() => {
                       setEmail(cred.email);
-                      setPassword(cred.email === 'admin@mediflow.com' ? 'password123' : 'Mainak@123');
+                      setPassword(cred.password);
                     }}
                   >
                     <div className="bg-gradient-to-br from-green-100 to-emerald-100 p-2 rounded-lg mr-3 group-hover:from-green-200 group-hover:to-emerald-200 transition-all">
