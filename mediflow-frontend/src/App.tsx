@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SocketProvider } from './context/SocketContext';
 import { LoginForm } from './components/auth/LoginForm';
+import { SignupForm } from './components/auth/SignupForm';
+import { LandingPage } from './components/auth/LandingPage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Toaster } from './components/ui/sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -146,6 +148,16 @@ const AppContent: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginForm />} />
+      <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignupForm />} />
+      <Route path="/" element={
+        user ? (
+          <ProtectedRoute>
+            <DashboardRoutes />
+          </ProtectedRoute>
+        ) : (
+          <LandingPage />
+        )
+      } />
       <Route path="/*" element={
         <ProtectedRoute>
           <DashboardRoutes />

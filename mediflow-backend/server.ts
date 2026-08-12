@@ -28,7 +28,6 @@ import { initializeSocket } from "./src/services/socketService";
 import { startReminderScheduler } from "./src/services/reminderScheduler";
 
 dotenv.config();
-connectDB();
 
 const app = express();
 const server = http.createServer(app);
@@ -94,8 +93,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 const PORT = process.env['PORT'] || 8000;
-server.listen(PORT, () => {
-    console.log(`MediFlow backend running on http://localhost:${PORT}`);
-    // Start appointment reminder scheduler
-    startReminderScheduler();
+connectDB().then(() => {
+    server.listen(PORT, () => {
+        console.log(`MediFlow backend running on http://localhost:${PORT}`);
+        // Start appointment reminder scheduler
+        startReminderScheduler();
+    });
 });

@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { login as loginAPI, getCurrentUser } from '../services/authService';
+import { login as loginAPI, signup as signupAPI, getCurrentUser } from '../services/authService';
 import { User } from '../types';
 import { analytics } from '../utils/analytics';
+
+interface SignupData {
+  name: string;
+  email: string;
+  password: string;
+  phone?: string;
+}
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateUser: (updatedUser: User) => void;
   isLoading: boolean;
@@ -53,6 +61,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signup = async (data: SignupData): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    try {
+      await signupAPI({ ...data, role: 'Patient' });
+      const loggedIn = await login(data.email, data.password);
+      if (!loggedIn) {
+        setIsLoading(false);
+        return { success: false, error: 'Account created, but automatic sign-in failed. Please sign in manually.' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      setIsLoading(false);
+      const message = err?.response?.data?.msg || 'Could not create account. Please try again.';
+      return { success: false, error: message };
+    }
+  };
+
   const logout = () => {
     analytics.trackLogout();
     localStorage.removeItem('token');
@@ -64,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isLoading }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, updateUser, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
