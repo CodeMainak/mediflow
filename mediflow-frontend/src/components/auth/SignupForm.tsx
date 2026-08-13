@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useAuth } from '../../context/AuthContext';
+import { useSlowLoad } from '../../hooks/useSlowLoad';
 import { Loader2, User, Mail, Phone, Lock } from 'lucide-react';
 import { MedicalLogo } from '../ui/medical-logo';
 
@@ -16,6 +17,7 @@ export const SignupForm: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { signup, isLoading } = useAuth();
+  const isSlow = useSlowLoad(isLoading);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -135,6 +137,15 @@ export const SignupForm: React.FC = () => {
                   'Create Account'
                 )}
               </Button>
+
+              {isSlow && (
+                <Alert className="border-amber-200 bg-amber-50">
+                  <AlertDescription className="text-amber-800 text-xs">
+                    Still working — this app runs on free hosting, so the server may be waking up
+                    from sleep. This can take up to a minute on the first try.
+                  </AlertDescription>
+                </Alert>
+              )}
             </form>
 
             <p className="text-center text-sm text-green-700 mt-6">

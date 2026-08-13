@@ -10,6 +10,7 @@ import {
   ClipboardList,
   ArrowRight,
   Stethoscope,
+  PlayCircle,
 } from 'lucide-react';
 
 const features = [
@@ -47,6 +48,12 @@ export const LandingPage: React.FC = () => {
           <span className="text-xl font-bold text-green-900">MediFlow</span>
         </div>
         <div className="flex items-center gap-3">
+          <Link to="/demo">
+            <Button variant="ghost" className="text-green-800 hover:bg-green-100 hidden sm:inline-flex">
+              <PlayCircle className="mr-1.5 h-4 w-4" />
+              View Demo
+            </Button>
+          </Link>
           <Link to="/login">
             <Button variant="ghost" className="text-green-800 hover:bg-green-100">Sign In</Button>
           </Link>
@@ -84,6 +91,10 @@ export const LandingPage: React.FC = () => {
             </Button>
           </Link>
         </div>
+        <Link to="/demo" className="inline-flex items-center gap-1.5 text-sm text-green-700 hover:text-green-900 hover:underline mt-5">
+          <PlayCircle className="h-4 w-4" />
+          Just browsing? View a live demo — no signup needed
+        </Link>
       </section>
 
       {/* Features */}

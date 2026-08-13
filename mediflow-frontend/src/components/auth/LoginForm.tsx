@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Alert, AlertDescription } from '../ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { useAuth } from '../../context/AuthContext';
+import { useSlowLoad } from '../../hooks/useSlowLoad';
 import { Loader2, Mail, Lock, ChevronDown } from 'lucide-react';
 import { MedicalLogo } from '../ui/medical-logo';
 
@@ -16,6 +17,7 @@ export const LoginForm: React.FC = () => {
   const [error, setError] = useState('');
   const [showDemo, setShowDemo] = useState(false);
   const { login, isLoading } = useAuth();
+  const isSlow = useSlowLoad(isLoading);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,6 +113,15 @@ export const LoginForm: React.FC = () => {
                   'Sign In'
                 )}
               </Button>
+
+              {isSlow && (
+                <Alert className="border-amber-200 bg-amber-50">
+                  <AlertDescription className="text-amber-800 text-xs">
+                    Still working — this app runs on free hosting, so the server may be waking up
+                    from sleep. This can take up to a minute on the first try.
+                  </AlertDescription>
+                </Alert>
+              )}
             </form>
 
             <p className="text-center text-sm text-green-700 mt-6">

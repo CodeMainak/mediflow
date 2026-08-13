@@ -1,10 +1,12 @@
 import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { useSlowLoad } from './hooks/useSlowLoad';
 import { SocketProvider } from './context/SocketContext';
 import { LoginForm } from './components/auth/LoginForm';
 import { SignupForm } from './components/auth/SignupForm';
 import { LandingPage } from './components/auth/LandingPage';
+import { DemoPreview } from './components/auth/DemoPreview';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Toaster } from './components/ui/sonner';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -35,11 +37,12 @@ const PageLoader = () => (
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isLoading } = useAuth();
+  const isSlow = useSlowLoad(isLoading);
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <div className="text-center">
+        <div className="text-center max-w-sm px-4">
           <div className="relative mb-6">
             <div className="animate-spin rounded-full h-16 w-16 border-4 border-green-200 border-t-green-600 mx-auto"></div>
             <div className="absolute inset-0 flex items-center justify-center">
@@ -57,6 +60,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
             </svg>
             Loading Healthcare System...
           </p>
+          {isSlow && (
+            <p className="text-green-700/70 text-xs mt-4">
+              Still working — this app runs on free hosting, so the server may be waking up from
+              sleep. This can take up to a minute on the first try.
+            </p>
+          )}
         </div>
       </div>
     );
@@ -149,6 +158,7 @@ const AppContent: React.FC = () => {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginForm />} />
       <Route path="/signup" element={user ? <Navigate to="/" replace /> : <SignupForm />} />
+      <Route path="/demo" element={<DemoPreview />} />
       <Route path="/" element={
         user ? (
           <ProtectedRoute>
