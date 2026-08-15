@@ -15,6 +15,7 @@ import notificationRoutes from "./src/routes/notificationRoutes";
 import adminRoutes from "./src/routes/adminRoutes";
 import doctorRoutes from "./src/routes/doctorRoutes";
 import pharmacyRoutes from "./src/routes/pharmacyRoutes";
+import aiRoutes from "./src/routes/aiRoutes";
 
 // Middleware
 import {
@@ -66,6 +67,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/pharmacy", pharmacyRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
