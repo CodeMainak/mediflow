@@ -16,6 +16,15 @@ function specializationRegex(specialization: string): RegExp {
 }
 
 type Urgency = "low" | "medium" | "high" | "emergency";
+type Duration = "today" | "few-days" | "over-week";
+type Severity = "mild" | "moderate" | "severe";
+
+interface TriageInput {
+    symptoms: string;
+    duration: Duration;
+    severity: Severity;
+    redFlags: string[];
+}
 
 interface Triage {
     specialization: string;
@@ -68,10 +77,26 @@ const RULES: { keywords: string[]; specialization: string; urgency: Urgency }[] 
     { keywords: ["urinary", "kidney", "bladder"], specialization: "Urology", urgency: "medium" },
 ];
 
-function ruleBasedTriage(symptoms: string): Triage {
+function baseMatch(symptoms: string): { specialization: string; urgency: Urgency } {
     const text = symptoms.toLowerCase();
+    for (const rule of RULES) {
+        if (rule.keywords.some((k) => text.includes(k))) {
+            return { specialization: rule.specialization, urgency: rule.urgency };
+        }
+    }
+    return { specialization: "General Physician", urgency: "low" };
+}
 
-    if (EMERGENCY_KEYWORDS.some((k) => text.includes(k))) {
+function escalate(urgency: Urgency): Urgency {
+    if (urgency === "low") return "medium";
+    if (urgency === "medium") return "high";
+    return urgency;
+}
+
+function ruleBasedTriage(input: TriageInput): Triage {
+    const { symptoms, duration, severity, redFlags } = input;
+
+    if (EMERGENCY_KEYWORDS.some((k) => symptoms.toLowerCase().includes(k))) {
         return {
             specialization: "General Physician",
             urgency: "emergency",
@@ -79,28 +104,53 @@ function ruleBasedTriage(symptoms: string): Triage {
         };
     }
 
-    for (const rule of RULES) {
-        if (rule.keywords.some((k) => text.includes(k))) {
-            return {
-                specialization: rule.specialization,
-                urgency: rule.urgency,
-                reasoning: `Based on the symptoms you described, a ${rule.specialization} specialist is a reasonable starting point.`,
-            };
+    const base = baseMatch(symptoms);
+    let urgency = base.urgency;
+    const notes: string[] = [];
+
+    if (redFlags.length > 0 && severity === "severe") {
+        urgency = "emergency";
+    } else {
+        if (redFlags.length > 0) {
+            urgency = escalate(urgency);
+            notes.push(`the additional symptoms you flagged (${redFlags.join(", ").toLowerCase()}) are worth having a doctor check on soon`);
+        }
+        if (severity === "severe") {
+            urgency = escalate(urgency);
+            notes.push("given how severe you rated this, it's worth getting seen sooner rather than later");
+        }
+        if (duration === "over-week" && notes.length === 0 && urgency === "low") {
+            urgency = "medium";
+            notes.push("since this has lasted over a week, it's a good idea not to wait much longer");
         }
     }
 
-    return {
-        specialization: "General Physician",
-        urgency: "low",
-        reasoning: "A General Physician can evaluate these symptoms and refer you further if needed.",
-    };
+    if (urgency === "emergency") {
+        return {
+            specialization: "General Physician",
+            urgency: "emergency",
+            reasoning: "The combination of severity and symptoms you described could be serious and should be looked at right away.",
+        };
+    }
+
+    const reasoning = notes.length > 0
+        ? `Based on what you described, a ${base.specialization} specialist is a reasonable starting point — ${notes.join(", and ")}.`
+        : `Based on the symptoms you described, a ${base.specialization} specialist is a reasonable starting point.`;
+
+    return { specialization: base.specialization, urgency, reasoning };
 }
 
-async function openAiTriage(symptoms: string): Promise<Triage | null> {
+async function openAiTriage(input: TriageInput): Promise<Triage | null> {
     const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) return null;
 
     try {
+        const userContent =
+            `Symptoms: ${input.symptoms}\n` +
+            `Duration: ${input.duration}\n` +
+            `Self-rated severity: ${input.severity}\n` +
+            `Additional symptoms present: ${input.redFlags.length ? input.redFlags.join(", ") : "none reported"}`;
+
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -116,13 +166,15 @@ async function openAiTriage(symptoms: string): Promise<Triage | null> {
                         role: "system",
                         content:
                             "You are a triage assistant for a healthcare app. Given a patient's plain-language " +
-                            "description of their symptoms, respond with ONLY a JSON object with keys: " +
+                            "description of their symptoms plus follow-up answers on duration, self-rated severity, " +
+                            "and additional (red-flag) symptoms, respond with ONLY a JSON object with keys: " +
                             `"specialization" (must be exactly one of: ${SPECIALIZATIONS.join(", ")}), ` +
                             '"urgency" (one of: low, medium, high, emergency), and "reasoning" (one short sentence, ' +
-                            "plain language, no diagnosis, no medication advice). " +
-                            "Use \"emergency\" only for symptoms that suggest a life-threatening condition.",
+                            "plain language, no diagnosis, no medication advice, referencing the follow-up answers " +
+                            "where relevant). Weigh severe self-rated severity and additional symptoms heavily toward " +
+                            "higher urgency. Use \"emergency\" only for symptoms that suggest a life-threatening condition.",
                     },
-                    { role: "user", content: symptoms },
+                    { role: "user", content: userContent },
                 ],
             }),
         });
@@ -150,9 +202,17 @@ async function openAiTriage(symptoms: string): Promise<Triage | null> {
     }
 }
 
+const VALID_DURATIONS: Duration[] = ["today", "few-days", "over-week"];
+const VALID_SEVERITIES: Severity[] = ["mild", "moderate", "severe"];
+
 export const symptomCheck = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const symptoms = String(req.body?.symptoms || "").trim();
+        const duration: Duration = VALID_DURATIONS.includes(req.body?.duration) ? req.body.duration : "today";
+        const severity: Severity = VALID_SEVERITIES.includes(req.body?.severity) ? req.body.severity : "moderate";
+        const redFlags: string[] = Array.isArray(req.body?.redFlags)
+            ? req.body.redFlags.filter((f: unknown) => typeof f === "string").slice(0, 10)
+            : [];
 
         if (!symptoms) {
             res.status(400).json({ msg: "Please describe your symptoms." });
@@ -163,7 +223,8 @@ export const symptomCheck = async (req: AuthRequest, res: Response): Promise<voi
             return;
         }
 
-        const triage = (await openAiTriage(symptoms)) || ruleBasedTriage(symptoms);
+        const input: TriageInput = { symptoms, duration, severity, redFlags };
+        const triage = (await openAiTriage(input)) || ruleBasedTriage(input);
 
         // Emergency cases shouldn't be routed into routine appointment booking.
         if (triage.urgency === "emergency") {

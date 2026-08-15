@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { MedicalLogo } from '../ui/medical-logo';
+import { SymptomTriageFlow } from '../shared/SymptomTriageFlow';
 import { demoTriage, DemoTriageResult } from '../../utils/demoTriage';
 import {
   CalendarCheck,
@@ -13,7 +14,6 @@ import {
   ArrowRight,
   Sparkles,
   PlayCircle,
-  Send,
 } from 'lucide-react';
 
 const features = [
@@ -47,65 +47,43 @@ const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
 };
 
 const HeroTry: React.FC = () => {
-  const [symptoms, setSymptoms] = useState('');
-  const [result, setResult] = useState<DemoTriageResult | null>(null);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!symptoms.trim()) return;
-    setResult(demoTriage(symptoms));
-  };
-
   return (
-    <div className="max-w-xl mx-auto mt-10">
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center gap-2 bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-green-300 transition-all p-1.5 pl-5"
-      >
-        <Sparkles className="h-4 w-4 text-green-600 shrink-0" />
-        <input
-          value={symptoms}
-          onChange={(e) => setSymptoms(e.target.value)}
-          placeholder="Try it — describe how you're feeling..."
-          className="flex-1 bg-transparent border-0 outline-none text-sm text-gray-800 placeholder:text-gray-400 py-2"
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!symptoms.trim()}
-          className="rounded-full bg-green-600 hover:bg-green-700 text-white shrink-0 h-9 w-9"
-          aria-label="Check symptoms"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
-      <p className="text-xs text-gray-400 mt-2">Runs instantly in your browser — no sign-up, no network call.</p>
-
-      {result && (
-        <div className="animate-fade-in-up mt-4 text-left bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-          {result.urgency === 'emergency' ? (
-            <p className="text-sm text-red-700">
-              <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
-              Please contact emergency services rather than booking a routine appointment.
-            </p>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 flex-wrap mb-2">
-                <Badge className={URGENCY_STYLES[result.urgency]}>
-                  {result.urgency[0].toUpperCase() + result.urgency.slice(1)} urgency
-                </Badge>
-                <Badge variant="outline" className="border-gray-200 text-gray-700">
-                  {result.specialization}
-                </Badge>
-              </div>
-              <p className="text-sm text-gray-600">{result.reasoning}</p>
-            </>
-          )}
-          <Link to="/demo" className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline mt-3">
-            See the full experience <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
+    <div className="max-w-xl mx-auto mt-10 text-left">
+      <SymptomTriageFlow<DemoTriageResult>
+        compact
+        onSubmit={(answers) => demoTriage(answers)}
+        renderResult={(result, reset) => (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
+            {result.urgency === 'emergency' ? (
+              <p className="text-sm text-red-700">
+                <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
+                Please contact emergency services rather than booking a routine appointment.
+              </p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 flex-wrap mb-2">
+                  <Badge className={URGENCY_STYLES[result.urgency]}>
+                    {result.urgency[0].toUpperCase() + result.urgency.slice(1)} urgency
+                  </Badge>
+                  <Badge variant="outline" className="border-gray-200 text-gray-700">
+                    {result.specialization}
+                  </Badge>
+                </div>
+                <p className="text-sm text-gray-600">{result.reasoning}</p>
+              </>
+            )}
+            <div className="flex items-center justify-between mt-3">
+              <Link to="/demo" className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline">
+                See the full experience <ArrowRight className="h-3 w-3" />
+              </Link>
+              <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-600">
+                Try another
+              </button>
+            </div>
+          </div>
+        )}
+      />
+      <p className="text-xs text-gray-400 mt-2 text-center">Runs instantly in your browser — no sign-up, no network call.</p>
     </div>
   );
 };

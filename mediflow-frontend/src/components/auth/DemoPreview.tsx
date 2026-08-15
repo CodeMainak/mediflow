@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { MedicalLogo } from '../ui/medical-logo';
+import { SymptomTriageFlow } from '../shared/SymptomTriageFlow';
 import { demoTriage, DemoTriageResult } from '../../utils/demoTriage';
 import {
   CalendarDays,
@@ -17,6 +17,7 @@ import {
   ArrowLeft,
   Sparkles,
   AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 
 const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
@@ -34,15 +35,6 @@ const URGENCY_LABEL: Record<DemoTriageResult['urgency'], string> = {
 };
 
 const DemoSymptomChecker: React.FC = () => {
-  const [symptoms, setSymptoms] = useState('');
-  const [result, setResult] = useState<DemoTriageResult | null>(null);
-
-  const handleCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!symptoms.trim()) return;
-    setResult(demoTriage(symptoms));
-  };
-
   return (
     <Card className="border border-gray-100 shadow-sm mb-8">
       <CardContent className="pt-6 pb-6">
@@ -53,59 +45,53 @@ const DemoSymptomChecker: React.FC = () => {
         <p className="text-sm text-gray-500 mb-4">
           Describe how you're feeling — this runs instantly, right in your browser, no account needed.
         </p>
-        <form onSubmit={handleCheck} className="space-y-3">
-          <Textarea
-            value={symptoms}
-            onChange={(e) => setSymptoms(e.target.value)}
-            placeholder="e.g. I've had a sore throat and mild fever for two days..."
-            className="border-gray-200 focus-visible:border-green-500 focus-visible:ring-green-500 min-h-[80px]"
-          />
-          <Button
-            type="submit"
-            disabled={!symptoms.trim()}
-            className="bg-green-600 hover:bg-green-700 text-white transition-colors"
-          >
-            Check my symptoms
-          </Button>
-        </form>
 
-        {result && (
-          <div className="animate-fade-in-up mt-5 pt-5 border-t border-gray-100 space-y-3">
-            {result.urgency === 'emergency' ? (
-              <Alert className="border-red-300 bg-red-50">
-                <AlertTriangle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
-                  Please contact emergency services rather than booking a routine appointment.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={URGENCY_STYLES[result.urgency]}>{URGENCY_LABEL[result.urgency]}</Badge>
-                  <Badge variant="outline" className="border-gray-200 text-gray-700">
-                    {result.specialization}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-700">{result.reasoning}</p>
-                {result.doctors.map((d) => (
-                  <div key={d.name} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
-                    <div className="bg-white p-2 rounded-lg border border-gray-100">
-                      <Stethoscope className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 text-sm">{d.name}</div>
-                      <div className="text-xs text-gray-500">{d.specialization}</div>
-                    </div>
+        <SymptomTriageFlow<DemoTriageResult>
+          onSubmit={(answers) => demoTriage(answers)}
+          renderResult={(result, reset) => (
+            <div className="pt-5 border-t border-gray-100 space-y-3">
+              {result.urgency === 'emergency' ? (
+                <Alert className="border-red-300 bg-red-50">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
+                    Please contact emergency services rather than booking a routine appointment.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Badge className={URGENCY_STYLES[result.urgency]}>{URGENCY_LABEL[result.urgency]}</Badge>
+                    <Badge variant="outline" className="border-gray-200 text-gray-700">
+                      {result.specialization}
+                    </Badge>
                   </div>
-                ))}
-              </>
-            )}
-            <p className="text-xs text-gray-400">
-              Sample logic for this preview — the real app can also call OpenAI for richer triage.
-            </p>
-          </div>
-        )}
+                  <p className="text-sm text-gray-700">{result.reasoning}</p>
+                  {result.doctors.map((d) => (
+                    <div key={d.name} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                      <div className="bg-white p-2 rounded-lg border border-gray-100">
+                        <Stethoscope className="h-4 w-4 text-green-600" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 text-sm">{d.name}</div>
+                        <div className="text-xs text-gray-500">{d.specialization}</div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-400">
+                  Sample logic for this preview — the real app can also call OpenAI for richer triage.
+                </p>
+                <Button size="sm" variant="ghost" className="text-gray-500 shrink-0" onClick={reset}>
+                  <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+                  Start over
+                </Button>
+              </div>
+            </div>
+          )}
+        />
       </CardContent>
     </Card>
   );
