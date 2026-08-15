@@ -30,31 +30,34 @@ export const SignupForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-emerald-100 opacity-50 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-green-100 opacity-40 blur-3xl" />
+
+      <div className="relative w-full max-w-md animate-fade-in-up">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex mb-6">
-            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-4 rounded-3xl shadow-xl border-4 border-white">
+            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-3.5 rounded-2xl shadow-md">
               <MedicalLogo size="md" />
             </div>
           </Link>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent mb-1">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
             Create your account
           </h1>
-          <p className="text-green-700 text-sm">
+          <p className="text-gray-500 text-sm">
             Book appointments and manage your care in a few minutes.
           </p>
         </div>
 
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+        <Card className="shadow-sm border border-gray-100">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl text-green-900">Patient Sign Up</CardTitle>
+            <CardTitle className="text-xl text-gray-900">Patient Sign Up</CardTitle>
             <CardDescription>Free — no paperwork, no waiting room</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-green-900 font-medium">Full Name</Label>
+                <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
                 <div className="relative">
                   <Input
                     id="name"
@@ -62,15 +65,15 @@ export const SignupForm: React.FC = () => {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Your full name"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     required
                   />
-                  <User className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <User className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-green-900 font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
                 <div className="relative">
                   <Input
                     id="email"
@@ -78,15 +81,15 @@ export const SignupForm: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     required
                   />
-                  <Mail className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone" className="text-green-900 font-medium">Phone Number</Label>
+                <Label htmlFor="phone" className="text-gray-700 font-medium">Phone Number</Label>
                 <div className="relative">
                   <Input
                     id="phone"
@@ -94,14 +97,14 @@ export const SignupForm: React.FC = () => {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="For appointment reminders"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                   />
-                  <Phone className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Phone className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-green-900 font-medium">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -109,11 +112,11 @@ export const SignupForm: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="At least 6 characters"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     minLength={6}
                     required
                   />
-                  <Lock className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Lock className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
@@ -125,7 +128,7 @@ export const SignupForm: React.FC = () => {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg"
+                className="w-full bg-green-600 hover:bg-green-700 hover:-translate-y-0.5 text-white font-semibold py-3 shadow-md shadow-green-600/10 transition-all"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -148,17 +151,17 @@ export const SignupForm: React.FC = () => {
               )}
             </form>
 
-            <p className="text-center text-sm text-green-700 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-green-800 hover:underline">
+              <Link to="/login" className="font-semibold text-green-700 hover:underline">
                 Sign in
               </Link>
             </p>
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-green-600 mt-6">
-          Hospital staff? <Link to="/login" className="underline">Sign in here</Link> instead.
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Hospital staff? <Link to="/login" className="underline hover:text-gray-600">Sign in here</Link> instead.
         </p>
       </div>
     </div>

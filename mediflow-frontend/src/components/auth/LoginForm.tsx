@@ -38,31 +38,34 @@ export const LoginForm: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="relative min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-100 opacity-50 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-green-100 opacity-40 blur-3xl" />
+
+      <div className="relative w-full max-w-md animate-fade-in-up">
         {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex mb-6">
-            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-4 rounded-3xl shadow-xl border-4 border-white">
+            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-3.5 rounded-2xl shadow-md">
               <MedicalLogo size="md" />
             </div>
           </Link>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent mb-1">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
             Welcome back
           </h1>
-          <p className="text-green-700 text-sm">Sign in to your MediFlow account</p>
+          <p className="text-gray-500 text-sm">Sign in to your MediFlow account</p>
         </div>
 
         {/* Login Card */}
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+        <Card className="shadow-sm border border-gray-100">
           <CardHeader className="text-center pb-2">
-            <CardTitle className="text-xl text-green-900">Sign In</CardTitle>
+            <CardTitle className="text-xl text-gray-900">Sign In</CardTitle>
             <CardDescription>Enter your email and password to continue</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-green-900 font-medium">Email Address</Label>
+                <Label htmlFor="email" className="text-gray-700 font-medium">Email Address</Label>
                 <div className="relative">
                   <Input
                     id="email"
@@ -70,15 +73,15 @@ export const LoginForm: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     required
                   />
-                  <Mail className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Mail className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-green-900 font-medium">Password</Label>
+                <Label htmlFor="password" className="text-gray-700 font-medium">Password</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -86,10 +89,10 @@ export const LoginForm: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="pl-10 border-green-200 focus:border-green-500 focus:ring-green-500"
+                    className="pl-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     required
                   />
-                  <Lock className="h-4 w-4 text-green-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Lock className="h-4 w-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 </div>
               </div>
 
@@ -101,7 +104,7 @@ export const LoginForm: React.FC = () => {
 
               <Button
                 type="submit"
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-3 shadow-lg"
+                className="w-full bg-green-600 hover:bg-green-700 hover:-translate-y-0.5 text-white font-semibold py-3 shadow-md shadow-green-600/10 transition-all"
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -124,9 +127,9 @@ export const LoginForm: React.FC = () => {
               )}
             </form>
 
-            <p className="text-center text-sm text-green-700 mt-6">
+            <p className="text-center text-sm text-gray-500 mt-6">
               New patient?{' '}
-              <Link to="/signup" className="font-semibold text-green-800 hover:underline">
+              <Link to="/signup" className="font-semibold text-green-700 hover:underline">
                 Create an account
               </Link>
             </p>
@@ -138,14 +141,14 @@ export const LoginForm: React.FC = () => {
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="w-full flex items-center justify-center gap-1.5 text-xs text-green-700/70 hover:text-green-800 py-2"
+              className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 py-2 transition-colors"
             >
               Reviewing this project? View demo credentials
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDemo ? 'rotate-180' : ''}`} />
             </button>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <Card className="border-0 shadow-md bg-white/80 mt-1">
+            <Card className="border border-gray-100 shadow-sm mt-1">
               <CardContent className="py-4 space-y-1.5">
                 {demoCredentials.map((cred) => (
                   <button
@@ -157,8 +160,8 @@ export const LoginForm: React.FC = () => {
                       setPassword(cred.password);
                     }}
                   >
-                    <span className="font-medium text-green-900">{cred.role}</span>
-                    <span className="text-green-600">{cred.email}</span>
+                    <span className="font-medium text-gray-700">{cred.role}</span>
+                    <span className="text-green-700">{cred.email}</span>
                   </button>
                 ))}
               </CardContent>
