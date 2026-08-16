@@ -32,6 +32,10 @@ import { startReminderScheduler } from "./src/services/reminderScheduler";
 dotenv.config();
 
 const app = express();
+// Render puts one reverse proxy in front of the app; trusting exactly that
+// one hop lets express-rate-limit read the real client IP from
+// X-Forwarded-For instead of throwing ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
 // Initialize Socket.io
