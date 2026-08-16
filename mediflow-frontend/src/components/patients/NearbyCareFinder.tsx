@@ -3,7 +3,9 @@ import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { findNearbyCare, genericMapsSearchUrl, typeLabel, NearbyPlace, PlaceSource } from '../../utils/findNearbyCare';
-import { MapPin, Loader2, Navigation, Star } from 'lucide-react';
+import { savePlace } from '../../services/placesService';
+import { MapPin, Loader2, Navigation, Star, Bookmark, BookmarkCheck } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface NearbyCareFinderProps {
   category: 'emergency' | 'general';
@@ -12,7 +14,7 @@ interface NearbyCareFinderProps {
   keyword?: string;
   /** Runs the search immediately instead of waiting for a click. */
   autoStart?: boolean;
-  /** Uses the public, unauthenticated demo endpoint instead of the authenticated one. */
+  /** Uses the public, unauthenticated demo endpoint instead of the authenticated one — also hides Save, since there's no account to save to. */
   demoMode?: boolean;
 }
 
@@ -21,6 +23,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [source, setSource] = useState<PlaceSource>('osm');
   const [error, setError] = useState('');
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set());
 
   const run = useCallback(async () => {
     setStatus('loading');
@@ -41,6 +44,26 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
     if (autoStart) run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
+
+  const handleSave = async (e: React.MouseEvent, place: NearbyPlace) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (savedUrls.has(place.mapsUrl)) return;
+    try {
+      await savePlace({
+        name: place.name,
+        type: place.type,
+        address: '',
+        rating: place.rating,
+        userRatingsTotal: place.userRatingsTotal,
+        mapsUrl: place.mapsUrl,
+      });
+      setSavedUrls((prev) => new Set(prev).add(place.mapsUrl));
+      toast.success(`Saved ${place.name}`);
+    } catch {
+      toast.error('Could not save this place right now.');
+    }
+  };
 
   if (status === 'idle') {
     return (
@@ -85,35 +108,50 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
           ? `Real places near you, ranked by Google rating${keyword ? ` (matching ${keyword})` : ''}:`
           : 'Real places near you, via OpenStreetMap (no rating data available):'}
       </p>
-      {places.map((p) => (
-        <a
-          key={p.name + p.mapsUrl}
-          href={p.mapsUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-100 hover:border-green-200 transition-colors group"
-        >
-          <div>
-            <div className="text-sm font-medium text-gray-900">{p.name}</div>
-            <div className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
-              <span>{typeLabel(p.type)} · {p.distanceKm.toFixed(1)} km away</span>
-              {typeof p.rating === 'number' && (
-                <span className="inline-flex items-center gap-0.5 text-amber-600 font-medium">
-                  <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                  {p.rating.toFixed(1)}
-                  {p.userRatingsTotal ? <span className="text-gray-400 font-normal">({p.userRatingsTotal})</span> : null}
-                </span>
-              )}
-              {p.openNow !== undefined && (
-                <Badge variant="outline" className={p.openNow ? 'border-green-200 text-green-700 text-[10px] py-0' : 'border-gray-200 text-gray-500 text-[10px] py-0'}>
-                  {p.openNow ? 'Open now' : 'Closed'}
-                </Badge>
-              )}
+      {places.map((p) => {
+        const isSaved = savedUrls.has(p.mapsUrl);
+        return (
+          <a
+            key={p.name + p.mapsUrl}
+            href={p.mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50 border border-gray-100 hover:border-green-200 transition-colors group"
+          >
+            <div>
+              <div className="text-sm font-medium text-gray-900">{p.name}</div>
+              <div className="text-xs text-gray-500 flex items-center gap-1.5 flex-wrap">
+                <span>{typeLabel(p.type)} · {p.distanceKm.toFixed(1)} km away</span>
+                {typeof p.rating === 'number' && (
+                  <span className="inline-flex items-center gap-0.5 text-amber-600 font-medium">
+                    <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                    {p.rating.toFixed(1)}
+                    {p.userRatingsTotal ? <span className="text-gray-400 font-normal">({p.userRatingsTotal})</span> : null}
+                  </span>
+                )}
+                {p.openNow !== undefined && (
+                  <Badge variant="outline" className={p.openNow ? 'border-green-200 text-green-700 text-[10px] py-0' : 'border-gray-200 text-gray-500 text-[10px] py-0'}>
+                    {p.openNow ? 'Open now' : 'Closed'}
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-          <Navigation className="h-4 w-4 text-gray-300 group-hover:text-green-600 transition-colors shrink-0" />
-        </a>
-      ))}
+            <div className="flex items-center gap-1 shrink-0">
+              {!demoMode && (
+                <button
+                  type="button"
+                  onClick={(e) => handleSave(e, p)}
+                  aria-label={isSaved ? 'Saved' : 'Save this place'}
+                  className={`p-1.5 rounded-md transition-colors ${isSaved ? 'text-green-600' : 'text-gray-300 hover:text-green-600 hover:bg-green-50'}`}
+                >
+                  {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+                </button>
+              )}
+              <Navigation className="h-4 w-4 text-gray-300 group-hover:text-green-600 transition-colors" />
+            </div>
+          </a>
+        );
+      })}
     </div>
   );
 };

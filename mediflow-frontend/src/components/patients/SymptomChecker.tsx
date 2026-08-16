@@ -1,12 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { AiSymptomChat, ChatMessage } from '../shared/AiSymptomChat';
 import { NearbyCareFinder } from './NearbyCareFinder';
-import { chatSymptoms } from '../../services/aiService';
-import { Sparkles, AlertTriangle, RotateCcw, HeartPulse, Wand2 } from 'lucide-react';
+import { chatSymptoms, getSymptomHistory } from '../../services/aiService';
+import { Sparkles, AlertTriangle, RotateCcw, HeartPulse, Wand2, History, ChevronDown } from 'lucide-react';
 
 interface TriageResult {
   mode: 'ai' | 'fallback';
@@ -15,6 +16,15 @@ interface TriageResult {
   reasoning: string;
   selfCare: string;
   disclaimer: string;
+}
+
+interface HistoryEntry {
+  _id: string;
+  symptoms: string;
+  specialization: string;
+  urgency: TriageResult['urgency'];
+  reasoning: string;
+  createdAt: string;
 }
 
 const URGENCY_STYLES: Record<TriageResult['urgency'], string> = {
@@ -32,6 +42,19 @@ const URGENCY_LABEL: Record<TriageResult['urgency'], string> = {
 };
 
 export const SymptomChecker: React.FC = () => {
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
+  const refreshHistory = useCallback(() => {
+    getSymptomHistory()
+      .then((res) => setHistory(res.data.history || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
+
   return (
     <Card className="border border-gray-100 shadow-sm">
       <CardHeader>
@@ -41,14 +64,19 @@ export const SymptomChecker: React.FC = () => {
         </CardTitle>
         <CardDescription>
           Answer a couple of quick follow-ups, tailored to what you tell us, and we'll figure out what kind of
-          care you need — then find real options nearby, not a made-up doctor list.
+          care you need — then find real options nearby, not a made-up doctor list. Since you're signed in,
+          this gets saved to your history.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <AiSymptomChat<TriageResult>
           onMessage={async (messages: ChatMessage[]) => {
             const res = await chatSymptoms(messages);
-            return res.data.done ? { done: true, result: res.data } : { done: false, question: res.data.question, quickReplies: res.data.quickReplies };
+            if (res.data.done) {
+              refreshHistory();
+              return { done: true, result: res.data };
+            }
+            return { done: false, question: res.data.question, quickReplies: res.data.quickReplies };
           }}
           renderResult={(result, reset) => (
             <div className="space-y-4">
@@ -102,6 +130,34 @@ export const SymptomChecker: React.FC = () => {
             </div>
           )}
         />
+
+        {history.length > 0 && (
+          <Collapsible open={historyOpen} onOpenChange={setHistoryOpen} className="mt-5 pt-4 border-t border-gray-100">
+            <CollapsibleTrigger asChild>
+              <button type="button" className="w-full flex items-center justify-between text-xs text-gray-500 hover:text-gray-700">
+                <span className="flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  Your past checks ({history.length})
+                </span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${historyOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-3 space-y-2">
+                {history.map((h) => (
+                  <div key={h._id} className="p-2.5 rounded-lg bg-gray-50 border border-gray-100 text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                      <Badge className={`${URGENCY_STYLES[h.urgency]} text-[10px] py-0`}>{URGENCY_LABEL[h.urgency]}</Badge>
+                      <Badge variant="outline" className="border-gray-200 text-gray-600 text-[10px] py-0">{h.specialization}</Badge>
+                      <span className="text-gray-400 ml-auto">{new Date(h.createdAt).toLocaleDateString()}</span>
+                    </div>
+                    <p className="text-gray-600">"{h.symptoms}"</p>
+                  </div>
+                ))}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );

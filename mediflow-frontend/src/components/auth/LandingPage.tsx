@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
 import { MedicalLogo } from '../ui/medical-logo';
-import { SymptomTriageFlow } from '../shared/SymptomTriageFlow';
-import { demoTriage, DemoTriageResult } from '../../utils/demoTriage';
 import {
   CalendarCheck,
   FileText,
@@ -18,6 +15,7 @@ import {
   Check,
   X,
   ShieldCheck,
+  Send,
 } from 'lucide-react';
 
 const HERO_EXAMPLES = ['I have a bad headache', 'My chest feels tight', 'Itchy rash for 3 days'];
@@ -63,60 +61,60 @@ const COMPARISON_ROWS = [
   { old: 'One fixed intake form, every time', mediflow: 'Follow-up questions that adapt to what you said' },
 ];
 
-const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
-  low: 'bg-green-100 text-green-800 border-green-200',
-  medium: 'bg-amber-100 text-amber-800 border-amber-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  emergency: 'bg-red-600 text-white border-red-600',
-};
-
+// The hero doesn't run its own local triage anymore — it used to, and then
+// /demo asked the same question again with a different (offline) engine,
+// which meant describing your symptoms twice. Typing here or tapping an
+// example now takes you straight to /demo and auto-submits it there, so
+// there's exactly one real conversation, not two.
 const HeroTry: React.FC = () => {
-  const [lastSymptoms, setLastSymptoms] = useState('');
+  const [text, setText] = useState('');
+  const navigate = useNavigate();
+
+  const go = (symptoms: string) => {
+    if (!symptoms.trim()) return;
+    navigate('/demo', { state: { symptoms: symptoms.trim() } });
+  };
+
   return (
     <div className="max-w-xl mx-auto mt-10 text-left">
-      <SymptomTriageFlow<DemoTriageResult>
-        compact
-        examples={HERO_EXAMPLES}
-        onSubmit={(answers) => {
-          setLastSymptoms(answers.symptoms);
-          return demoTriage(answers);
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          go(text);
         }}
-        renderResult={(result, reset) => (
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
-            {result.urgency === 'emergency' ? (
-              <p className="text-sm text-red-700">
-                <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
-                Please contact emergency services rather than booking a routine appointment.
-              </p>
-            ) : (
-              <>
-                <div className="flex items-center gap-2 flex-wrap mb-2">
-                  <Badge className={URGENCY_STYLES[result.urgency]}>
-                    {result.urgency[0].toUpperCase() + result.urgency.slice(1)} urgency
-                  </Badge>
-                  <Badge variant="outline" className="border-gray-200 text-gray-700">
-                    {result.specialization}
-                  </Badge>
-                </div>
-                <p className="text-sm text-gray-600">{result.reasoning}</p>
-              </>
-            )}
-            <div className="flex items-center justify-between mt-3">
-              <Link
-                to="/demo"
-                state={{ symptoms: lastSymptoms }}
-                className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline"
-              >
-                See the full experience <ArrowRight className="h-3 w-3" />
-              </Link>
-              <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-600">
-                Try another
-              </button>
-            </div>
-          </div>
-        )}
-      />
-      <p className="text-xs text-gray-400 mt-2 text-center">Runs instantly in your browser — no sign-up, no network call.</p>
+        className="flex items-center gap-2 bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-green-300 transition-all p-1.5 pl-5"
+      >
+        <Sparkles className="h-4 w-4 text-green-600 shrink-0" />
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Try it — describe how you're feeling..."
+          className="flex-1 bg-transparent border-0 outline-none text-sm text-gray-800 placeholder:text-gray-400 py-2"
+        />
+        <Button
+          type="submit"
+          size="icon"
+          disabled={!text.trim()}
+          className="rounded-full bg-green-600 hover:bg-green-700 text-white shrink-0 h-9 w-9"
+          aria-label="Check symptoms"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </form>
+      <div className="flex flex-wrap items-center gap-2 mt-3 justify-center">
+        <span className="text-xs text-gray-400">Try asking:</span>
+        {HERO_EXAMPLES.map((ex) => (
+          <button
+            key={ex}
+            type="button"
+            onClick={() => go(ex)}
+            className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-800 transition-colors"
+          >
+            {ex}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-gray-400 mt-2 text-center">Takes you straight to a real, live answer — no signup needed.</p>
     </div>
   );
 };

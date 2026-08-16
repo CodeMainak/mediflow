@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
+import { SavedPlace } from "../models/SavedPlace";
 
 interface GooglePlace {
     name: string;
@@ -107,5 +108,46 @@ export const nearbyPlaces = async (req: AuthRequest, res: Response): Promise<voi
         res.json({ configured: true, places: merged.slice(0, 15) });
     } catch (err: any) {
         res.status(502).json({ msg: "Could not reach Google Places right now.", error: err.message });
+    }
+};
+
+export const savePlace = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = (req.user as any)?._id;
+        const { name, type, address, rating, userRatingsTotal, mapsUrl } = req.body || {};
+
+        if (!name || !type || !mapsUrl) {
+            res.status(400).json({ msg: "name, type, and mapsUrl are required." });
+            return;
+        }
+
+        const saved = await SavedPlace.findOneAndUpdate(
+            { patient: userId, mapsUrl },
+            { patient: userId, name, type, address, rating, userRatingsTotal, mapsUrl },
+            { new: true, upsert: true }
+        );
+        res.json(saved);
+    } catch (err: any) {
+        res.status(500).json({ msg: "Server error", error: err.message });
+    }
+};
+
+export const listSavedPlaces = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = (req.user as any)?._id;
+        const places = await SavedPlace.find({ patient: userId }).sort({ createdAt: -1 });
+        res.json({ places });
+    } catch (err: any) {
+        res.status(500).json({ msg: "Server error", error: err.message });
+    }
+};
+
+export const deleteSavedPlace = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = (req.user as any)?._id;
+        await SavedPlace.deleteOne({ _id: req.params.id, patient: userId });
+        res.json({ msg: "Removed." });
+    } catch (err: any) {
+        res.status(500).json({ msg: "Server error", error: err.message });
     }
 };

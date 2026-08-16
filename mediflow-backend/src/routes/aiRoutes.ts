@@ -1,11 +1,12 @@
 import express from "express";
-import { symptomChat } from "../controllers/aiController";
+import { symptomChat, getSymptomHistory } from "../controllers/aiController";
 import { protect } from "../middlewares/authMiddleware";
 import { demoLimiter } from "../middlewares/securityMiddleware";
 
 const router = express.Router();
 
 router.post("/symptom-chat", protect, symptomChat);
+router.get("/history", protect, getSymptomHistory);
 
 // Public, unauthenticated version for the /demo page — same real logic,
 // no fake data, just no login required. Separately rate-limited since it's

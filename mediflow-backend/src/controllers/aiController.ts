@@ -1,5 +1,6 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
+import { SymptomCheck } from "../models/SymptomCheck";
 
 type Urgency = "low" | "medium" | "high" | "emergency";
 type ChatRole = "user" | "assistant";
@@ -322,15 +323,47 @@ export const symptomChat = async (req: AuthRequest, res: Response): Promise<void
             return;
         }
 
+        const selfCare = turn.urgency === "emergency" ? SELF_CARE_GUIDANCE.emergency : SELF_CARE_GUIDANCE[turn.urgency];
+
+        // Only the authenticated route sets req.user — the public /demo
+        // endpoint reuses this same handler but has nothing to attach
+        // history to (and shouldn't: "no account needed" also means
+        // nothing you type there is saved).
+        const userId = (req.user as any)?._id;
+        if (userId) {
+            SymptomCheck.create({
+                patient: userId,
+                symptoms: messages[0].content,
+                specialization: turn.specialization,
+                urgency: turn.urgency,
+                reasoning: turn.reasoning,
+                selfCare,
+                mode,
+            }).catch(() => {}); // history is a nice-to-have, never block the response on it
+        }
+
         res.json({
             done: true,
             mode,
             specialization: turn.specialization,
             urgency: turn.urgency,
             reasoning: turn.reasoning,
-            selfCare: turn.urgency === "emergency" ? SELF_CARE_GUIDANCE.emergency : SELF_CARE_GUIDANCE[turn.urgency],
+            selfCare,
             disclaimer: DISCLAIMER,
         });
+    } catch (err: any) {
+        res.status(500).json({ msg: "Server error", error: err.message });
+    }
+};
+
+export const getSymptomHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const userId = (req.user as any)?._id;
+        const history = await SymptomCheck.find({ patient: userId })
+            .sort({ createdAt: -1 })
+            .limit(20)
+            .select("symptoms specialization urgency reasoning createdAt");
+        res.json({ history });
     } catch (err: any) {
         res.status(500).json({ msg: "Server error", error: err.message });
     }

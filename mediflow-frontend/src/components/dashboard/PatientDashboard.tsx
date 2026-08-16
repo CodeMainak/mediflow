@@ -35,6 +35,7 @@ import { getRecentActivities } from '../../services/activityService';
 import { getMyPrescriptions } from '../../services/prescriptionService';
 import { RecentActivityLog } from './RecentActivityLog';
 import { SymptomChecker } from '../patients/SymptomChecker';
+import { SavedCareList } from '../patients/SavedCareList';
 import { toast } from 'sonner';
 
 // Define Practo-like primary color variables for reuse
@@ -230,6 +231,9 @@ export const PatientDashboard: React.FC = () => {
 
       {/* 1b. AI Symptom Checker */}
       <SymptomChecker />
+
+      {/* 1c. Saved Care (renders nothing until something's been saved) */}
+      <SavedCareList />
 
       {/* 2. Stats Cards (Personalized Header Colors) */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-6" style={{ margin: "40px 0" }}>
