@@ -5,15 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
 import { SymptomTriageFlow } from '../shared/SymptomTriageFlow';
+import { NearbyCareFinder } from './NearbyCareFinder';
 import { checkSymptoms } from '../../services/aiService';
-import { Sparkles, Stethoscope, AlertTriangle, ArrowRight, RotateCcw } from 'lucide-react';
+import { Sparkles, Stethoscope, AlertTriangle, ArrowRight, RotateCcw, HeartPulse } from 'lucide-react';
 
 interface TriageResult {
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
+  selfCare: string;
   disclaimer: string;
   doctors: { id: string; name: string; specialization: string; experience: number }[];
+  doctorsNote?: string;
 }
 
 const URGENCY_STYLES: Record<TriageResult['urgency'], string> = {
@@ -51,14 +54,17 @@ export const SymptomChecker: React.FC = () => {
           renderResult={(result, reset) => (
             <div className="space-y-4">
               {result.urgency === 'emergency' ? (
-                <Alert className="border-red-300 bg-red-50">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <AlertDescription className="text-red-800">
-                    <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
-                    Please contact emergency services or visit the nearest emergency room — don't wait
-                    for a routine appointment.
-                  </AlertDescription>
-                </Alert>
+                <>
+                  <Alert className="border-red-300 bg-red-50">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-800">
+                      <span className="font-semibold">This needs immediate attention.</span> {result.reasoning}{' '}
+                      Please contact emergency services or visit the nearest emergency room — don't wait
+                      for a routine appointment.
+                    </AlertDescription>
+                  </Alert>
+                  <NearbyCareFinder category="emergency" label="Find nearest real hospital" />
+                </>
               ) : (
                 <>
                   <div className="flex items-center gap-2 flex-wrap">
@@ -68,6 +74,11 @@ export const SymptomChecker: React.FC = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-700">{result.reasoning}</p>
+
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-green-50 border border-green-100">
+                    <HeartPulse className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-green-900">{result.selfCare}</p>
+                  </div>
 
                   {result.doctors.length > 0 ? (
                     <div className="space-y-2">
@@ -95,10 +106,15 @@ export const SymptomChecker: React.FC = () => {
                     </div>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      No {result.specialization} available to book right now — try the Appointments
-                      page to see all doctors.
+                      No {result.specialization} available to book right now.
                     </p>
                   )}
+                  {result.doctorsNote && <p className="text-xs text-gray-400">{result.doctorsNote}</p>}
+
+                  <div className="pt-1 border-t border-gray-100">
+                    <p className="text-xs text-gray-400 mb-2 pt-3">Prefer real care today instead of booking here?</p>
+                    <NearbyCareFinder category="general" />
+                  </div>
                 </>
               )}
               <div className="flex items-center justify-between pt-1">

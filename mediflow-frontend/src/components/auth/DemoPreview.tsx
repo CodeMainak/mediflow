@@ -18,6 +18,7 @@ import {
   Sparkles,
   AlertTriangle,
   RotateCcw,
+  HeartPulse,
 } from 'lucide-react';
 
 const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
@@ -67,6 +68,12 @@ const DemoSymptomChecker: React.FC = () => {
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-700">{result.reasoning}</p>
+
+                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-green-50 border border-green-100">
+                    <HeartPulse className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                    <p className="text-sm text-green-900">{result.selfCare}</p>
+                  </div>
+
                   {result.doctors.map((d) => (
                     <div key={d.name} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100">
                       <div className="bg-white p-2 rounded-lg border border-gray-100">
@@ -78,6 +85,9 @@ const DemoSymptomChecker: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                  <p className="text-xs text-gray-400">
+                    Sample doctors for this preview, not a real directory — sign up to search real nearby care.
+                  </p>
                 </>
               )}
               <div className="flex items-center justify-between">
