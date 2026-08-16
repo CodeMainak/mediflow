@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -15,24 +16,22 @@ import {
   FileText,
   Clock,
   User,
-  Heart,
   Pill,
   Activity,
   Shield,
   Stethoscope,
-  Thermometer,
   CalendarCheck,
   ClipboardList,
   AlertCircle,
   Phone,
   Droplet,
   CalendarDays,
-  UserCheck,
   Loader2,
 } from 'lucide-react';
 import { mockAppointments, mockUsers, mockPrescriptions } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
 import { AppointmentBookingForm } from '../appointments/AppointmentBookingForm';
+import { NearbyCareFinder } from '../patients/NearbyCareFinder';
 import { getAppointments, deleteAppointment } from '../../services/appointmentService';
 import { getRecentActivities } from '../../services/activityService';
 import { getMyPrescriptions } from '../../services/prescriptionService';
@@ -46,6 +45,7 @@ const PractoSecondary = 'teal-500';
 
 export const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   // State management
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -261,7 +261,7 @@ export const PatientDashboard: React.FC = () => {
       <SymptomChecker />
 
       {/* 2. Stats Cards (Personalized Header Colors) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6" style={{ margin: "40px 0" }}>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-6" style={{ margin: "40px 0" }}>
         <Card className="relative overflow-hidden border-l-4 border-emerald-600 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100">
           {/* Watermark background icon */}
           <div className="absolute right-2 bottom-2 opacity-10 text-emerald-400">
@@ -354,33 +354,6 @@ export const PatientDashboard: React.FC = () => {
         </Card>
 
 
-        {/* Health Vitals - Info (Blue) */}
-        <Card className="relative overflow-hidden border-l-4 border-blue-500 shadow-lg hover:shadow-xl transition-shadow duration-300 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100">
-          {/* Watermark background icon */}
-          <div className="absolute right-2 bottom-2 opacity-10 text-blue-400">
-            <Heart className="h-28 w-28" />
-          </div>
-
-          {/* Header with darker blue banner */}
-          <CardHeader className="relative z-10 flex flex-row items-center justify-between space-y-0 p-4 pb-2 bg-blue-600">
-            <CardTitle className="text-sm font-semibold text-blue-400">
-              Health Vitals
-            </CardTitle>
-          </CardHeader>
-
-          {/* Content */}
-          <CardContent className="relative z-10 p-4 pt-2">
-            <div className="text-2xl font-extrabold text-gray-900 flex items-center">
-              <Thermometer className="h-6 w-6 mr-2 text-blue-500" />
-              Stable
-            </div>
-            <p className="text-sm text-blue-700 flex items-center mt-1">
-              <UserCheck className="h-4 w-4 mr-1" />
-              Last updated today
-            </p>
-          </CardContent>
-        </Card>
-
       </div>
 
       {/* 3. Main Content Area: Focused Lists (No changes needed, already uses themed headers) */}
@@ -407,13 +380,16 @@ export const PatientDashboard: React.FC = () => {
                 <div className="text-center py-10 border-2 border-dashed border-emerald-300 rounded-lg bg-emerald-50/50 py-4">
                   <Calendar className="mx-auto h-12 w-12 text-emerald-500 mb-4" />
                   <p className="text-emerald-800 font-medium text-lg mb-4">You're all caught up!</p>
-                  <Button
-                    onClick={() => setBookingDialogOpen(true)}
-                    className={`bg-emerald-600 hover:bg-emerald-700 text-white`}
-                  >
-                    <CalendarDays className="h-4 w-4 mr-2" />
-                    Find a Specialist
-                  </Button>
+                  <div className="flex flex-col items-center gap-3">
+                    <NearbyCareFinder category="general" label="Find real care near you" />
+                    <button
+                      type="button"
+                      onClick={() => setBookingDialogOpen(true)}
+                      className="text-xs text-emerald-700 hover:underline"
+                    >
+                      Or book within MediFlow's demo network
+                    </button>
+                  </div>
                 </div>
               ) : (
                 upcomingAppointments.map((appointment) => {
@@ -455,21 +431,6 @@ export const PatientDashboard: React.FC = () => {
                     </div>
                   );
                 })
-              )}
-
-              {/* Removed duplicate empty state that was always showing */}
-              {false && upcomingAppointments.length === 0 && (
-                <div className="text-center py-10 border-2 border-dashed border-emerald-300 rounded-lg bg-emerald-50/50">
-                  <Calendar className="mx-auto h-12 w-12 text-emerald-500 mb-4" />
-                  <p className="text-emerald-800 font-medium text-lg mb-4">You're all caught up!</p>
-                  <Button
-                    onClick={() => setBookingDialogOpen(true)}
-                    className={`bg-emerald-600 hover:bg-emerald-700 text-white`}
-                  >
-                    <CalendarDays className="h-4 w-4 mr-2" />
-                    Find a Specialist
-                  </Button>
-                </div>
               )}
             </div>
           </CardContent>
@@ -528,7 +489,12 @@ export const PatientDashboard: React.FC = () => {
                             Issued: {prescriptionDate}
                           </p>
                         </div>
-                        <Button variant="default" size="sm" className={`bg-teal-500 hover:bg-teal-600 text-white font-semibold`}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className={`bg-teal-500 hover:bg-teal-600 text-white font-semibold`}
+                          onClick={() => navigate('/prescriptions')}
+                        >
                           View Rx
                         </Button>
                       </div>

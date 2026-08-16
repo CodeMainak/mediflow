@@ -511,16 +511,6 @@ export const PrescriptionManager: React.FC = () => {
                     <Download className="h-4 w-4 mr-1" />
                     Download PDF
                   </Button>
-                  {user?.role?.toLowerCase() === "patient" && (
-                    <Button
-                      variant="outline"
-                      className="flex-1 flex items-center justify-center"
-                      onClick={() => toast.info('Request refill functionality coming soon!')}
-                    >
-                      <Calendar className="h-4 w-4 mr-1" />
-                      Request Refill
-                    </Button>
-                  )}
                 </div>
               </CardContent>
             </Card>

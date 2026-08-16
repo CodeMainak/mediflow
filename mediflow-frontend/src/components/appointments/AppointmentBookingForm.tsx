@@ -167,6 +167,12 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({ 
             </SelectContent>
           </Select>
         )}
+        {!loadingDoctors && doctors.length > 0 && (
+          <p className="text-xs text-gray-400">
+            This books within MediFlow's own network — for a live deployment these would be real registered doctors;
+            in this demo they're seeded accounts, not real practitioners.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
