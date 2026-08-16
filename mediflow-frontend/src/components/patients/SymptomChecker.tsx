@@ -4,12 +4,13 @@ import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
-import { SymptomTriageFlow } from '../shared/SymptomTriageFlow';
+import { AiSymptomChat, ChatMessage } from '../shared/AiSymptomChat';
 import { NearbyCareFinder } from './NearbyCareFinder';
-import { checkSymptoms } from '../../services/aiService';
-import { Sparkles, Stethoscope, AlertTriangle, ArrowRight, RotateCcw, HeartPulse } from 'lucide-react';
+import { chatSymptoms } from '../../services/aiService';
+import { Sparkles, Stethoscope, AlertTriangle, ArrowRight, RotateCcw, HeartPulse, Wand2 } from 'lucide-react';
 
 interface TriageResult {
+  mode: 'ai' | 'fallback';
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
@@ -43,13 +44,13 @@ export const SymptomChecker: React.FC = () => {
           <Sparkles className="h-5 w-5 text-green-600" />
           Not sure who to see?
         </CardTitle>
-        <CardDescription>Answer a few quick questions and we'll suggest the right specialist.</CardDescription>
+        <CardDescription>Answer a couple of quick follow-ups, tailored to what you tell us, and we'll suggest the right specialist.</CardDescription>
       </CardHeader>
       <CardContent>
-        <SymptomTriageFlow<TriageResult>
-          onSubmit={async (answers) => {
-            const res = await checkSymptoms(answers);
-            return res.data;
+        <AiSymptomChat<TriageResult>
+          onMessage={async (messages: ChatMessage[]) => {
+            const res = await chatSymptoms(messages);
+            return res.data.done ? { done: true, result: res.data } : { done: false, question: res.data.question, quickReplies: res.data.quickReplies };
           }}
           renderResult={(result, reset) => (
             <div className="space-y-4">
@@ -72,6 +73,11 @@ export const SymptomChecker: React.FC = () => {
                     <Badge variant="outline" className="border-gray-200 text-gray-700">
                       {result.specialization}
                     </Badge>
+                    {result.mode === 'ai' && (
+                      <Badge variant="outline" className="border-green-200 text-green-700 gap-1">
+                        <Wand2 className="h-3 w-3" /> AI-guided
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-gray-700">{result.reasoning}</p>
 
@@ -118,7 +124,10 @@ export const SymptomChecker: React.FC = () => {
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400 flex-1">{result.disclaimer}</p>
+                <p className="text-xs text-gray-400 flex-1">
+                  {result.disclaimer}
+                  {result.mode === 'fallback' && ' Using simplified rule-based triage — add an OpenAI key for fully AI-guided questions.'}
+                </p>
                 <Button size="sm" variant="ghost" className="text-gray-500 shrink-0" onClick={reset}>
                   <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                   Start over

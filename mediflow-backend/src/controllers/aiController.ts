@@ -16,21 +16,21 @@ function specializationRegex(specialization: string): RegExp {
 }
 
 type Urgency = "low" | "medium" | "high" | "emergency";
-type Duration = "today" | "few-days" | "over-week";
-type Severity = "mild" | "moderate" | "severe";
-
-interface TriageInput {
-    symptoms: string;
-    duration: Duration;
-    severity: Severity;
-    redFlags: string[];
+type ChatRole = "user" | "assistant";
+interface ChatMessage {
+    role: ChatRole;
+    content: string;
 }
 
-interface Triage {
+interface Conclusion {
     specialization: string;
     urgency: Urgency;
     reasoning: string;
 }
+
+type AgentTurn =
+    | { done: false; question: string; quickReplies?: string[] }
+    | ({ done: true } & Conclusion);
 
 const SPECIALIZATIONS = [
     "General Physician",
@@ -103,64 +103,161 @@ function escalate(urgency: Urgency): Urgency {
     return urgency;
 }
 
-function ruleBasedTriage(input: TriageInput): Triage {
-    const { symptoms, duration, severity, redFlags } = input;
+function isEmergencyText(text: string): boolean {
+    const t = text.toLowerCase();
+    return EMERGENCY_KEYWORDS.some((k) => t.includes(k));
+}
 
-    if (EMERGENCY_KEYWORDS.some((k) => symptoms.toLowerCase().includes(k))) {
+const MAX_QUESTIONS = 3;
+
+/**
+ * No-AI fallback. Genuinely adaptive (question is chosen from the
+ * patient's initial symptom category, not a fixed universal script), but
+ * bounded to one tailored follow-up — true per-answer dynamism needs the
+ * OpenAI path below.
+ */
+const CATEGORY_FOLLOWUPS: Record<string, { question: string; quickReplies: string[]; escalateIf: string[] }> = {
+    Cardiology: {
+        question: "Do you also feel short of breath, dizzy, or sweaty along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Dermatology: {
+        question: "Is the area spreading, or is there any pain, oozing, or fever with it?",
+        quickReplies: ["Yes, one of those", "No, just the skin issue"],
+        escalateIf: ["yes"],
+    },
+    Orthopedics: {
+        question: "Can you still move or put weight on it normally?",
+        quickReplies: ["Yes, mostly normal", "No, it's difficult"],
+        escalateIf: ["no"],
+    },
+    Pediatrics: {
+        question: "Are they eating, drinking, and behaving normally otherwise?",
+        quickReplies: ["Yes, mostly normal", "No, clearly not themselves"],
+        escalateIf: ["no"],
+    },
+    ENT: {
+        question: "Is it affecting your breathing or hearing, or mainly just discomfort?",
+        quickReplies: ["Just discomfort", "Affecting breathing/hearing"],
+        escalateIf: ["affecting"],
+    },
+    Neurology: {
+        question: "Is this the worst episode you've ever had, or any weakness/confusion with it?",
+        quickReplies: ["No, fairly typical", "Yes, worse or with other symptoms"],
+        escalateIf: ["yes"],
+    },
+    Psychiatry: {
+        question: "Is this affecting your ability to function day-to-day?",
+        quickReplies: ["Not really", "Somewhat", "Yes, significantly"],
+        escalateIf: ["significantly"],
+    },
+    Gynecology: {
+        question: "Is there any severe pain or unusual bleeding along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Ophthalmology: {
+        question: "Any sudden vision loss or eye pain along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Dentistry: {
+        question: "Is there any facial swelling or fever along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Pulmonology: {
+        question: "Are you having any difficulty breathing, even mild, along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Gastroenterology: {
+        question: "Any blood, or is it getting noticeably worse?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    Endocrinology: {
+        question: "Has this been going on for more than a couple of weeks?",
+        quickReplies: ["Yes", "No, fairly recent"],
+        escalateIf: ["yes"],
+    },
+    Urology: {
+        question: "Any fever or significant pain along with it?",
+        quickReplies: ["Yes", "No"],
+        escalateIf: ["yes"],
+    },
+    "General Physician": {
+        question: "On a scale of mild to severe, how would you describe it, and has it lasted more than a few days?",
+        quickReplies: ["Mild, recent", "Moderate/severe, or lasting a while"],
+        escalateIf: ["moderate", "severe", "while"],
+    },
+};
+
+function fallbackAgentTurn(messages: ChatMessage[]): AgentTurn {
+    const firstUserMessage = messages.find((m) => m.role === "user")?.content || "";
+    const assistantTurns = messages.filter((m) => m.role === "assistant").length;
+
+    if (isEmergencyText(firstUserMessage)) {
         return {
+            done: true,
             specialization: "General Physician",
             urgency: "emergency",
             reasoning: "What you described could be serious and shouldn't wait for a routine appointment.",
         };
     }
 
-    const base = baseMatch(symptoms);
+    const base = baseMatch(firstUserMessage);
+
+    if (assistantTurns === 0) {
+        const followup = CATEGORY_FOLLOWUPS[base.specialization];
+        return { done: false, question: followup.question, quickReplies: followup.quickReplies };
+    }
+
+    const lastAnswer = (messages[messages.length - 1]?.content || "").toLowerCase();
+    const followup = CATEGORY_FOLLOWUPS[base.specialization];
     let urgency = base.urgency;
-    const notes: string[] = [];
-
-    if (redFlags.length > 0 && severity === "severe") {
-        urgency = "emergency";
-    } else {
-        if (redFlags.length > 0) {
-            urgency = escalate(urgency);
-            notes.push(`the additional symptoms you flagged (${redFlags.join(", ").toLowerCase()}) are worth having a doctor check on soon`);
-        }
-        if (severity === "severe") {
-            urgency = escalate(urgency);
-            notes.push("given how severe you rated this, it's worth getting seen sooner rather than later");
-        }
-        if (duration === "over-week" && notes.length === 0 && urgency === "low") {
-            urgency = "medium";
-            notes.push("since this has lasted over a week, it's a good idea not to wait much longer");
-        }
+    if (followup.escalateIf.some((trigger) => lastAnswer.includes(trigger))) {
+        urgency = escalate(urgency);
     }
 
-    if (urgency === "emergency") {
-        return {
-            specialization: "General Physician",
-            urgency: "emergency",
-            reasoning: "The combination of severity and symptoms you described could be serious and should be looked at right away.",
-        };
-    }
-
-    const reasoning = notes.length > 0
-        ? `Based on what you described, a ${base.specialization} specialist is a reasonable starting point — ${notes.join(", and ")}.`
-        : `Based on the symptoms you described, a ${base.specialization} specialist is a reasonable starting point.`;
-
-    return { specialization: base.specialization, urgency, reasoning };
+    return {
+        done: true,
+        specialization: base.specialization,
+        urgency,
+        reasoning: `Based on what you described, a ${base.specialization} specialist is a reasonable starting point.`,
+    };
 }
 
-async function openAiTriage(input: TriageInput): Promise<Triage | null> {
+async function openAiAgentTurn(messages: ChatMessage[]): Promise<AgentTurn | null> {
     const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) return null;
 
-    try {
-        const userContent =
-            `Symptoms: ${input.symptoms}\n` +
-            `Duration: ${input.duration}\n` +
-            `Self-rated severity: ${input.severity}\n` +
-            `Additional symptoms present: ${input.redFlags.length ? input.redFlags.join(", ") : "none reported"}`;
+    const assistantTurns = messages.filter((m) => m.role === "assistant").length;
+    const mustConclude = assistantTurns >= MAX_QUESTIONS;
 
+    const systemPrompt =
+        "You are a triage assistant embedded in a healthcare app, having a short conversation with a patient " +
+        "to work out how urgently they need care and which kind of specialist to see.\n\n" +
+        "Rules:\n" +
+        "- Ask ONE short, specific follow-up question at a time, directly informed by everything the patient " +
+        "has said so far. Never repeat a question you've effectively already asked.\n" +
+        `- You may ask at most ${MAX_QUESTIONS} follow-up questions before you must conclude. Fewer is fine if ` +
+        "you're confident sooner.\n" +
+        "- When a question naturally has a short set of likely answers (yes/no, a scale, a small list), include " +
+        "2-4 short quickReplies strings. Use null for genuinely open-ended questions.\n" +
+        "- If anything described could be a medical emergency (e.g. chest pain with shortness of breath, stroke " +
+        "symptoms, severe bleeding, suicidal ideation, difficulty breathing), stop immediately and conclude with " +
+        "urgency \"emergency\" — do not ask further questions.\n" +
+        "- Never diagnose or give medication/dosing advice — only ever a specialization and urgency with one " +
+        "short, plain-language reason.\n" +
+        `- specialization must be exactly one of: ${SPECIALIZATIONS.join(", ")}.\n` +
+        (mustConclude ? "- You have already asked the maximum number of questions. You MUST conclude now (done:true) using your best judgement from the conversation so far.\n" : "") +
+        "\nRespond with ONLY raw JSON, no markdown fences, matching exactly one of these shapes:\n" +
+        'Still gathering info: {"done": false, "question": "string", "quickReplies": ["string", ...] | null}\n' +
+        'Ready to conclude: {"done": true, "specialization": "string", "urgency": "low"|"medium"|"high"|"emergency", "reasoning": "string"}';
+
+    try {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -169,22 +266,11 @@ async function openAiTriage(input: TriageInput): Promise<Triage | null> {
             },
             body: JSON.stringify({
                 model: "gpt-4o-mini",
-                temperature: 0.2,
+                temperature: 0.3,
                 response_format: { type: "json_object" },
                 messages: [
-                    {
-                        role: "system",
-                        content:
-                            "You are a triage assistant for a healthcare app. Given a patient's plain-language " +
-                            "description of their symptoms plus follow-up answers on duration, self-rated severity, " +
-                            "and additional (red-flag) symptoms, respond with ONLY a JSON object with keys: " +
-                            `"specialization" (must be exactly one of: ${SPECIALIZATIONS.join(", ")}), ` +
-                            '"urgency" (one of: low, medium, high, emergency), and "reasoning" (one short sentence, ' +
-                            "plain language, no diagnosis, no medication advice, referencing the follow-up answers " +
-                            "where relevant). Weigh severe self-rated severity and additional symptoms heavily toward " +
-                            "higher urgency. Use \"emergency\" only for symptoms that suggest a life-threatening condition.",
-                    },
-                    { role: "user", content: userContent },
+                    { role: "system", content: systemPrompt },
+                    ...messages.map((m) => ({ role: m.role, content: m.content })),
                 ],
             }),
         });
@@ -196,52 +282,97 @@ async function openAiTriage(input: TriageInput): Promise<Triage | null> {
         if (!content) return null;
 
         const parsed = JSON.parse(content);
-        if (!SPECIALIZATIONS.includes(parsed.specialization)) {
-            parsed.specialization = "General Physician";
+
+        if (parsed.done) {
+            if (!SPECIALIZATIONS.includes(parsed.specialization)) parsed.specialization = "General Physician";
+            if (!["low", "medium", "high", "emergency"].includes(parsed.urgency)) parsed.urgency = "medium";
+            return {
+                done: true,
+                specialization: parsed.specialization,
+                urgency: parsed.urgency,
+                reasoning: String(parsed.reasoning || "").slice(0, 300),
+            };
         }
-        if (!["low", "medium", "high", "emergency"].includes(parsed.urgency)) {
-            parsed.urgency = "medium";
-        }
+
+        if (mustConclude) return null; // model didn't comply with the hard cap — fall through to safety net
         return {
-            specialization: parsed.specialization,
-            urgency: parsed.urgency,
-            reasoning: String(parsed.reasoning || "").slice(0, 300),
+            done: false,
+            question: String(parsed.question || "").slice(0, 300),
+            quickReplies: Array.isArray(parsed.quickReplies) ? parsed.quickReplies.slice(0, 4).map(String) : undefined,
         };
     } catch {
         return null;
     }
 }
 
-const VALID_DURATIONS: Duration[] = ["today", "few-days", "over-week"];
-const VALID_SEVERITIES: Severity[] = ["mild", "moderate", "severe"];
+async function findDoctorsFor(specialization: string) {
+    const regex = specializationRegex(specialization);
 
-export const symptomCheck = async (req: AuthRequest, res: Response): Promise<void> => {
+    const profiles = await DoctorProfile.find({ specialization: { $regex: regex } })
+        .populate("user", "name email")
+        .sort({ experience: -1 })
+        .limit(3);
+
+    let doctorList = profiles.map((d) => ({
+        id: d._id,
+        name: (d.user as any)?.name || "Unknown",
+        specialization: d.specialization,
+        experience: d.experience,
+    }));
+
+    if (doctorList.length === 0) {
+        const fallbackDoctors = await User.find({ role: "Doctor", specialization: { $regex: regex } })
+            .select("name specialization")
+            .limit(3);
+        doctorList = fallbackDoctors.map((d) => ({
+            id: d._id,
+            name: d.name,
+            specialization: d.specialization || specialization,
+            experience: 0,
+        }));
+    }
+
+    return doctorList;
+}
+
+function sanitizeMessages(raw: unknown): ChatMessage[] {
+    if (!Array.isArray(raw)) return [];
+    return raw
+        .filter((m): m is ChatMessage => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .map((m) => ({ role: m.role, content: m.content.slice(0, 500) }))
+        .slice(-20);
+}
+
+export const symptomChat = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const symptoms = String(req.body?.symptoms || "").trim();
-        const duration: Duration = VALID_DURATIONS.includes(req.body?.duration) ? req.body.duration : "today";
-        const severity: Severity = VALID_SEVERITIES.includes(req.body?.severity) ? req.body.severity : "moderate";
-        const redFlags: string[] = Array.isArray(req.body?.redFlags)
-            ? req.body.redFlags.filter((f: unknown) => typeof f === "string").slice(0, 10)
-            : [];
+        const messages = sanitizeMessages(req.body?.messages);
 
-        if (!symptoms) {
-            res.status(400).json({ msg: "Please describe your symptoms." });
+        if (messages.length === 0 || messages[0].role !== "user" || !messages[0].content.trim()) {
+            res.status(400).json({ msg: "Please describe your symptoms to start." });
             return;
         }
-        if (symptoms.length > 1000) {
-            res.status(400).json({ msg: "Please keep your description under 1000 characters." });
+        const assistantTurns = messages.filter((m) => m.role === "assistant").length;
+        if (assistantTurns > MAX_QUESTIONS) {
+            res.status(400).json({ msg: "Conversation too long." });
             return;
         }
 
-        const input: TriageInput = { symptoms, duration, severity, redFlags };
-        const triage = (await openAiTriage(input)) || ruleBasedTriage(input);
+        const aiResult = await openAiAgentTurn(messages);
+        const turn: AgentTurn = aiResult || fallbackAgentTurn(messages);
+        const mode = aiResult ? "ai" : "fallback";
 
-        // Emergency cases shouldn't be routed into routine appointment booking.
-        if (triage.urgency === "emergency") {
+        if (!turn.done) {
+            res.json({ done: false, mode, question: turn.question, quickReplies: turn.quickReplies });
+            return;
+        }
+
+        if (turn.urgency === "emergency") {
             res.json({
-                specialization: triage.specialization,
-                urgency: triage.urgency,
-                reasoning: triage.reasoning,
+                done: true,
+                mode,
+                specialization: turn.specialization,
+                urgency: turn.urgency,
+                reasoning: turn.reasoning,
                 selfCare: SELF_CARE_GUIDANCE.emergency,
                 disclaimer: DISCLAIMER,
                 doctors: [],
@@ -249,40 +380,17 @@ export const symptomCheck = async (req: AuthRequest, res: Response): Promise<voi
             return;
         }
 
-        const regex = specializationRegex(triage.specialization);
-
-        let doctors = await DoctorProfile.find({ specialization: { $regex: regex } })
-            .populate("user", "name email")
-            .sort({ experience: -1 })
-            .limit(3);
-
-        let doctorList = doctors.map((d) => ({
-            id: d._id,
-            name: (d.user as any)?.name || "Unknown",
-            specialization: d.specialization,
-            experience: d.experience,
-        }));
-
-        // Fall back to Users with a Doctor role when no DoctorProfile records exist yet.
-        if (doctorList.length === 0) {
-            const fallbackDoctors = await User.find({ role: "Doctor", specialization: { $regex: regex } })
-                .select("name specialization")
-                .limit(3);
-            doctorList = fallbackDoctors.map((d) => ({
-                id: d._id,
-                name: d.name,
-                specialization: d.specialization || triage.specialization,
-                experience: 0,
-            }));
-        }
+        const doctors = await findDoctorsFor(turn.specialization);
 
         res.json({
-            specialization: triage.specialization,
-            urgency: triage.urgency,
-            reasoning: triage.reasoning,
-            selfCare: SELF_CARE_GUIDANCE[triage.urgency],
+            done: true,
+            mode,
+            specialization: turn.specialization,
+            urgency: turn.urgency,
+            reasoning: turn.reasoning,
+            selfCare: SELF_CARE_GUIDANCE[turn.urgency],
             disclaimer: DISCLAIMER,
-            doctors: doctorList,
+            doctors,
             doctorsNote: "These are demo doctor accounts seeded for this project, not a real hospital network — use \"Find real care near you\" for actual nearby clinics.",
         });
     } catch (err: any) {

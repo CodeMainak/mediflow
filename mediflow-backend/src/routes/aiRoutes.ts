@@ -1,9 +1,9 @@
 import express from "express";
-import { symptomCheck } from "../controllers/aiController";
+import { symptomChat } from "../controllers/aiController";
 import { protect } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
-router.post("/symptom-check", protect, symptomCheck);
+router.post("/symptom-chat", protect, symptomChat);
 
 export default router;
