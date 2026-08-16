@@ -82,11 +82,17 @@ export const nearbyPlaces = async (req: AuthRequest, res: Response): Promise<voi
             }
         }
 
-        merged.sort((a, b) => {
-            const ratingDiff = (b.rating || 0) - (a.rating || 0);
-            if (Math.abs(ratingDiff) > 0.01) return ratingDiff;
-            return (b.userRatingsTotal || 0) - (a.userRatingsTotal || 0);
-        });
+        // Plain rating desc lets a 5.0 from 1 review outrank a 4.9 from 80,000+
+        // reviews. Weight toward a neutral prior until a place has enough
+        // ratings to trust, same idea as IMDB's weighted rating.
+        const MIN_VOTES = 15;
+        const PRIOR_RATING = 4.0;
+        const weightedScore = (rating?: number, votes?: number): number => {
+            if (!rating || !votes) return 0;
+            return (votes / (votes + MIN_VOTES)) * rating + (MIN_VOTES / (votes + MIN_VOTES)) * PRIOR_RATING;
+        };
+
+        merged.sort((a, b) => weightedScore(b.rating, b.userRatingsTotal) - weightedScore(a.rating, a.userRatingsTotal));
 
         res.json({ configured: true, places: merged.slice(0, 15) });
     } catch (err: any) {
