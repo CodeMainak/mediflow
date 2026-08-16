@@ -26,11 +26,13 @@ async function searchType(
     apiKey: string,
     lat: number,
     lng: number,
-    type: string
+    type: string,
+    keyword?: string
 ): Promise<any[]> {
-    const url =
+    let url =
         `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
         `?location=${lat},${lng}&radius=8000&type=${type}&key=${apiKey}`;
+    if (keyword) url += `&keyword=${encodeURIComponent(keyword)}`;
 
     const response = await fetch(url);
     if (!response.ok) return [];
@@ -53,6 +55,10 @@ export const nearbyPlaces = async (req: AuthRequest, res: Response): Promise<voi
         const lat = parseFloat(String(req.query["lat"]));
         const lng = parseFloat(String(req.query["lng"]));
         const category = req.query["category"] === "emergency" ? "emergency" : "general";
+        // Specialization from the AI triage (e.g. "Cardiology"), used to bias
+        // real results toward the specific specialist actually needed instead
+        // of a generic "any doctor nearby" search.
+        const keyword = typeof req.query["keyword"] === "string" ? req.query["keyword"].slice(0, 100) : undefined;
 
         if (Number.isNaN(lat) || Number.isNaN(lng)) {
             res.status(400).json({ msg: "Valid lat/lng query params are required." });
@@ -60,7 +66,11 @@ export const nearbyPlaces = async (req: AuthRequest, res: Response): Promise<voi
         }
 
         const types = category === "emergency" ? ["hospital"] : ["hospital", "doctor", "pharmacy"];
-        const resultSets = await Promise.all(types.map((t) => searchType(apiKey, lat, lng, t)));
+        // Pharmacies aren't relevant to a specialty search, and emergencies
+        // need the nearest hospital regardless of specialty.
+        const resultSets = await Promise.all(
+            types.map((t) => searchType(apiKey, lat, lng, t, category === "general" && t !== "pharmacy" ? keyword : undefined))
+        );
 
         const seen = new Set<string>();
         const merged: GooglePlace[] = [];

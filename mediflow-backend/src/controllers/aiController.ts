@@ -1,19 +1,5 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
-import { DoctorProfile } from "../models/DoctorProfile";
-import { User } from "../models/User";
-
-// Real-world specialization naming is inconsistent (e.g. doctors listed as
-// "General Medicine" rather than "General Physician"), so a few common
-// synonyms are matched alongside the canonical name.
-const SPECIALIZATION_ALIASES: Record<string, string[]> = {
-    "General Physician": ["General Medicine", "Family Medicine", "General Practice"],
-};
-
-function specializationRegex(specialization: string): RegExp {
-    const terms = [specialization, ...(SPECIALIZATION_ALIASES[specialization] || [])];
-    return new RegExp(terms.join("|"), "i");
-}
 
 type Urgency = "low" | "medium" | "high" | "emergency";
 type ChatRole = "user" | "assistant";
@@ -305,36 +291,6 @@ async function openAiAgentTurn(messages: ChatMessage[]): Promise<AgentTurn | nul
     }
 }
 
-async function findDoctorsFor(specialization: string) {
-    const regex = specializationRegex(specialization);
-
-    const profiles = await DoctorProfile.find({ specialization: { $regex: regex } })
-        .populate("user", "name email")
-        .sort({ experience: -1 })
-        .limit(3);
-
-    let doctorList = profiles.map((d) => ({
-        id: d._id,
-        name: (d.user as any)?.name || "Unknown",
-        specialization: d.specialization,
-        experience: d.experience,
-    }));
-
-    if (doctorList.length === 0) {
-        const fallbackDoctors = await User.find({ role: "Doctor", specialization: { $regex: regex } })
-            .select("name specialization")
-            .limit(3);
-        doctorList = fallbackDoctors.map((d) => ({
-            id: d._id,
-            name: d.name,
-            specialization: d.specialization || specialization,
-            experience: 0,
-        }));
-    }
-
-    return doctorList;
-}
-
 function sanitizeMessages(raw: unknown): ChatMessage[] {
     if (!Array.isArray(raw)) return [];
     return raw
@@ -366,32 +322,14 @@ export const symptomChat = async (req: AuthRequest, res: Response): Promise<void
             return;
         }
 
-        if (turn.urgency === "emergency") {
-            res.json({
-                done: true,
-                mode,
-                specialization: turn.specialization,
-                urgency: turn.urgency,
-                reasoning: turn.reasoning,
-                selfCare: SELF_CARE_GUIDANCE.emergency,
-                disclaimer: DISCLAIMER,
-                doctors: [],
-            });
-            return;
-        }
-
-        const doctors = await findDoctorsFor(turn.specialization);
-
         res.json({
             done: true,
             mode,
             specialization: turn.specialization,
             urgency: turn.urgency,
             reasoning: turn.reasoning,
-            selfCare: SELF_CARE_GUIDANCE[turn.urgency],
+            selfCare: turn.urgency === "emergency" ? SELF_CARE_GUIDANCE.emergency : SELF_CARE_GUIDANCE[turn.urgency],
             disclaimer: DISCLAIMER,
-            doctors,
-            doctorsNote: "These are demo doctor accounts seeded for this project, not a real hospital network — use \"Find real care near you\" for actual nearby clinics.",
         });
     } catch (err: any) {
         res.status(500).json({ msg: "Server error", error: err.message });

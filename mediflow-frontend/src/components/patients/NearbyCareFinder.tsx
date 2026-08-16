@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '../ui/button';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
@@ -8,19 +8,23 @@ import { MapPin, Loader2, Navigation, Star } from 'lucide-react';
 interface NearbyCareFinderProps {
   category: 'emergency' | 'general';
   label?: string;
+  /** Biases real results toward this specialty (e.g. "Cardiology"). */
+  keyword?: string;
+  /** Runs the search immediately instead of waiting for a click. */
+  autoStart?: boolean;
 }
 
-export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, label }) => {
+export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, label, keyword, autoStart }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [source, setSource] = useState<PlaceSource>('osm');
   const [error, setError] = useState('');
 
-  const handleClick = async () => {
+  const run = useCallback(async () => {
     setStatus('loading');
     setError('');
     try {
-      const result = await findNearbyCare(category);
+      const result = await findNearbyCare(category, keyword);
       setPlaces(result.places);
       setSource(result.source);
       setStatus(result.places.length > 0 ? 'done' : 'error');
@@ -29,14 +33,19 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
       setError(err?.message || 'Something went wrong. You can search manually instead.');
       setStatus('error');
     }
-  };
+  }, [category, keyword]);
+
+  useEffect(() => {
+    if (autoStart) run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
 
   if (status === 'idle') {
     return (
       <Button
         variant={category === 'emergency' ? 'default' : 'outline'}
         size="sm"
-        onClick={handleClick}
+        onClick={run}
         className={category === 'emergency' ? 'bg-red-600 hover:bg-red-700 text-white' : 'border-gray-200 text-gray-700 hover:bg-white'}
       >
         <MapPin className="mr-1.5 h-3.5 w-3.5" />
@@ -49,7 +58,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
     return (
       <div className="flex items-center gap-2 text-sm text-gray-500">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Finding real places near you...
+        Finding real {keyword ? `${keyword.toLowerCase()} ` : ''}places near you...
       </div>
     );
   }
@@ -59,7 +68,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
       <Alert className="border-amber-200 bg-amber-50">
         <AlertDescription className="text-amber-800 text-xs">
           {error}{' '}
-          <a href={genericMapsSearchUrl(category)} target="_blank" rel="noreferrer" className="underline font-medium">
+          <a href={genericMapsSearchUrl(category, keyword)} target="_blank" rel="noreferrer" className="underline font-medium">
             Search on Google Maps
           </a>
         </AlertDescription>
@@ -71,7 +80,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
     <div className="space-y-2">
       <p className="text-xs text-gray-400">
         {source === 'google'
-          ? 'Real places near you, ranked by Google rating:'
+          ? `Real places near you, ranked by Google rating${keyword ? ` (matching ${keyword})` : ''}:`
           : 'Real places near you, via OpenStreetMap (no rating data available):'}
       </p>
       {places.map((p) => (

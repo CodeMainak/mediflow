@@ -1,13 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
 import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { AiSymptomChat, ChatMessage } from '../shared/AiSymptomChat';
 import { NearbyCareFinder } from './NearbyCareFinder';
 import { chatSymptoms } from '../../services/aiService';
-import { Sparkles, Stethoscope, AlertTriangle, ArrowRight, RotateCcw, HeartPulse, Wand2 } from 'lucide-react';
+import { Sparkles, AlertTriangle, RotateCcw, HeartPulse, Wand2 } from 'lucide-react';
 
 interface TriageResult {
   mode: 'ai' | 'fallback';
@@ -16,8 +15,6 @@ interface TriageResult {
   reasoning: string;
   selfCare: string;
   disclaimer: string;
-  doctors: { id: string; name: string; specialization: string; experience: number }[];
-  doctorsNote?: string;
 }
 
 const URGENCY_STYLES: Record<TriageResult['urgency'], string> = {
@@ -35,8 +32,6 @@ const URGENCY_LABEL: Record<TriageResult['urgency'], string> = {
 };
 
 export const SymptomChecker: React.FC = () => {
-  const navigate = useNavigate();
-
   return (
     <Card className="border border-gray-100 shadow-sm">
       <CardHeader>
@@ -44,7 +39,10 @@ export const SymptomChecker: React.FC = () => {
           <Sparkles className="h-5 w-5 text-green-600" />
           Not sure who to see?
         </CardTitle>
-        <CardDescription>Answer a couple of quick follow-ups, tailored to what you tell us, and we'll suggest the right specialist.</CardDescription>
+        <CardDescription>
+          Answer a couple of quick follow-ups, tailored to what you tell us, and we'll figure out what kind of
+          care you need — then find real options nearby, not a made-up doctor list.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <AiSymptomChat<TriageResult>
@@ -64,7 +62,7 @@ export const SymptomChecker: React.FC = () => {
                       for a routine appointment.
                     </AlertDescription>
                   </Alert>
-                  <NearbyCareFinder category="emergency" label="Find nearest real hospital" />
+                  <NearbyCareFinder category="emergency" label="Find nearest real hospital" autoStart />
                 </>
               ) : (
                 <>
@@ -86,48 +84,16 @@ export const SymptomChecker: React.FC = () => {
                     <p className="text-sm text-green-900">{result.selfCare}</p>
                   </div>
 
-                  {result.doctors.length > 0 ? (
-                    <div className="space-y-2">
-                      {result.doctors.map((d) => (
-                        <div key={d.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg border border-gray-100">
-                              <Stethoscope className="h-4 w-4 text-green-600" />
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900 text-sm">{d.name}</div>
-                              <div className="text-xs text-gray-500">{d.specialization}</div>
-                            </div>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-gray-200 text-gray-700 hover:bg-white"
-                            onClick={() => navigate('/appointments')}
-                          >
-                            Book <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-gray-500">
-                      No {result.specialization} available to book right now.
-                    </p>
-                  )}
-                  {result.doctorsNote && <p className="text-xs text-gray-400">{result.doctorsNote}</p>}
-
                   <div className="pt-1 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 mb-2 pt-3">Prefer real care today instead of booking here?</p>
-                    <NearbyCareFinder category="general" />
+                    <p className="text-xs text-gray-500 mb-2 pt-3 font-medium">
+                      Real {result.specialization.toLowerCase()} options near you:
+                    </p>
+                    <NearbyCareFinder category="general" keyword={result.specialization} autoStart />
                   </div>
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400 flex-1">
-                  {result.disclaimer}
-                  {result.mode === 'fallback' && ' Using simplified rule-based triage — add an OpenAI key for fully AI-guided questions.'}
-                </p>
+                <p className="text-xs text-gray-400 flex-1">{result.disclaimer}</p>
                 <Button size="sm" variant="ghost" className="text-gray-500 shrink-0" onClick={reset}>
                   <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                   Start over

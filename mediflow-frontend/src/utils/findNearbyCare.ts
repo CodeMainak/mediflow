@@ -58,9 +58,9 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function fetchGooglePlaces(lat: number, lng: number, category: 'emergency' | 'general'): Promise<NearbyPlace[] | null> {
+async function fetchGooglePlaces(lat: number, lng: number, category: 'emergency' | 'general', keyword?: string): Promise<NearbyPlace[] | null> {
   try {
-    const res = await api.get('/api/places/nearby', { params: { lat, lng, category } });
+    const res = await api.get('/api/places/nearby', { params: { lat, lng, category, keyword } });
     if (!res.data?.configured) return null; // key not set up — fall back to OSM
     return (res.data.places || []).map((p: any) => ({
       name: p.name,
@@ -113,15 +113,17 @@ async function fetchOsmPlaces(lat: number, lng: number, category: 'emergency' | 
 
 /**
  * category "emergency" restricts results to hospitals only; "general"
- * includes clinics, doctors' offices, and pharmacies too.
+ * includes clinics, doctors' offices, and pharmacies too. `keyword` (e.g.
+ * "Cardiology") biases the real Google results toward that specialty when
+ * available — ignored by the OSM fallback, which can't do keyword search.
  */
-export async function findNearbyCare(category: 'emergency' | 'general'): Promise<NearbyCareResult> {
+export async function findNearbyCare(category: 'emergency' | 'general', keyword?: string): Promise<NearbyCareResult> {
   const position = await getCurrentPosition().catch(() => {
     throw new Error('Location access was denied or unavailable. You can search manually instead.');
   });
   const { latitude, longitude } = position.coords;
 
-  const googlePlaces = await fetchGooglePlaces(latitude, longitude, category);
+  const googlePlaces = await fetchGooglePlaces(latitude, longitude, category, keyword);
   if (googlePlaces && googlePlaces.length > 0) {
     return { source: 'google', places: googlePlaces };
   }
@@ -130,7 +132,7 @@ export async function findNearbyCare(category: 'emergency' | 'general'): Promise
   return { source: 'osm', places: osmPlaces };
 }
 
-export function genericMapsSearchUrl(category: 'emergency' | 'general'): string {
-  const query = category === 'emergency' ? 'hospital near me' : 'clinic near me';
+export function genericMapsSearchUrl(category: 'emergency' | 'general', keyword?: string): string {
+  const query = category === 'emergency' ? 'hospital near me' : `${keyword || 'clinic'} near me`;
   return `https://www.google.com/maps/search/${encodeURIComponent(query)}`;
 }
