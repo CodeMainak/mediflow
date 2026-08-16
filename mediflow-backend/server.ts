@@ -16,6 +16,7 @@ import adminRoutes from "./src/routes/adminRoutes";
 import doctorRoutes from "./src/routes/doctorRoutes";
 import pharmacyRoutes from "./src/routes/pharmacyRoutes";
 import aiRoutes from "./src/routes/aiRoutes";
+import placesRoutes from "./src/routes/placesRoutes";
 
 // Middleware
 import {
@@ -68,6 +69,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/pharmacy", pharmacyRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/places", placesRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {

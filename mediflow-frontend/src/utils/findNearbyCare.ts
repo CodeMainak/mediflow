@@ -1,19 +1,36 @@
-// Finds real, actual nearby healthcare places using the browser's
-// geolocation and OpenStreetMap's Overpass API — no seeded/fake data,
-// no API key required. Used only in the authenticated dashboard (not the
-// offline demo, which is explicitly network-free).
+// Finds real, actual nearby healthcare places for the authenticated
+// dashboard (not the offline demo, which is explicitly network-free).
+//
+// Two real data sources, tried in order:
+//   1. Google Places (via our backend, so the API key stays server-side)
+//      — real ratings, real review counts, real "open now" status.
+//   2. OpenStreetMap's Overpass API — real places, no ratings, but free
+//      and needs no API key, so it's always available as a fallback.
+
+import api from '../services/api';
+
+export type PlaceSource = 'google' | 'osm';
 
 export interface NearbyPlace {
   name: string;
   type: string;
   distanceKm: number;
   mapsUrl: string;
+  rating?: number;
+  userRatingsTotal?: number;
+  openNow?: boolean;
+}
+
+export interface NearbyCareResult {
+  source: PlaceSource;
+  places: NearbyPlace[];
 }
 
 const TYPE_LABELS: Record<string, string> = {
   hospital: 'Hospital',
   clinic: 'Clinic',
   doctors: "Doctor's office",
+  doctor: "Doctor's office",
   pharmacy: 'Pharmacy',
 };
 
@@ -41,18 +58,27 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/**
- * category "emergency" restricts results to hospitals only; "general"
- * includes clinics, doctors' offices, and pharmacies too.
- */
-export async function findNearbyCare(category: 'emergency' | 'general'): Promise<NearbyPlace[]> {
-  const position = await getCurrentPosition().catch(() => {
-    throw new Error('Location access was denied or unavailable. You can search manually instead.');
-  });
-  const { latitude, longitude } = position.coords;
+async function fetchGooglePlaces(lat: number, lng: number, category: 'emergency' | 'general'): Promise<NearbyPlace[] | null> {
+  try {
+    const res = await api.get('/api/places/nearby', { params: { lat, lng, category } });
+    if (!res.data?.configured) return null; // key not set up — fall back to OSM
+    return (res.data.places || []).map((p: any) => ({
+      name: p.name,
+      type: p.type,
+      distanceKm: p.distanceKm,
+      mapsUrl: p.mapsUrl,
+      rating: p.rating,
+      userRatingsTotal: p.userRatingsTotal,
+      openNow: p.openNow,
+    }));
+  } catch {
+    return null; // backend/Google hiccup — fall back to OSM rather than failing outright
+  }
+}
 
+async function fetchOsmPlaces(lat: number, lng: number, category: 'emergency' | 'general'): Promise<NearbyPlace[]> {
   const amenities = category === 'emergency' ? ['hospital'] : ['hospital', 'clinic', 'doctors', 'pharmacy'];
-  const clauses = amenities.map((a) => `node["amenity"="${a}"](around:8000,${latitude},${longitude});`).join('\n');
+  const clauses = amenities.map((a) => `node["amenity"="${a}"](around:8000,${lat},${lng});`).join('\n');
   const query = `[out:json][timeout:15];(${clauses});out center 25;`;
 
   const controller = new AbortController();
@@ -73,18 +99,35 @@ export async function findNearbyCare(category: 'emergency' | 'general'): Promise
     clearTimeout(timeout);
   }
 
-  const places: NearbyPlace[] = (data.elements || [])
+  return (data.elements || [])
     .filter((el: any) => el.tags?.name)
     .map((el: any) => ({
       name: el.tags.name,
       type: el.tags.amenity,
-      distanceKm: haversineKm(latitude, longitude, el.lat, el.lon),
+      distanceKm: haversineKm(lat, lng, el.lat, el.lon),
       mapsUrl: `https://www.google.com/maps/dir/?api=1&destination=${el.lat},${el.lon}`,
     }))
     .sort((a: NearbyPlace, b: NearbyPlace) => a.distanceKm - b.distanceKm)
     .slice(0, 6);
+}
 
-  return places;
+/**
+ * category "emergency" restricts results to hospitals only; "general"
+ * includes clinics, doctors' offices, and pharmacies too.
+ */
+export async function findNearbyCare(category: 'emergency' | 'general'): Promise<NearbyCareResult> {
+  const position = await getCurrentPosition().catch(() => {
+    throw new Error('Location access was denied or unavailable. You can search manually instead.');
+  });
+  const { latitude, longitude } = position.coords;
+
+  const googlePlaces = await fetchGooglePlaces(latitude, longitude, category);
+  if (googlePlaces && googlePlaces.length > 0) {
+    return { source: 'google', places: googlePlaces };
+  }
+
+  const osmPlaces = await fetchOsmPlaces(latitude, longitude, category);
+  return { source: 'osm', places: osmPlaces };
 }
 
 export function genericMapsSearchUrl(category: 'emergency' | 'general'): string {
