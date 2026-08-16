@@ -14,9 +14,25 @@ import {
   ArrowRight,
   Sparkles,
   PlayCircle,
+  MapPin,
+  Check,
+  X,
+  ShieldCheck,
 } from 'lucide-react';
 
+const HERO_EXAMPLES = ['I have a bad headache', 'My chest feels tight', 'Itchy rash for 3 days'];
+
 const features = [
+  {
+    icon: Sparkles,
+    title: 'AI-guided symptom triage',
+    description: 'Describe how you feel in plain language and get a specialization + urgency in under a minute — real follow-up questions, not a fixed script.',
+  },
+  {
+    icon: MapPin,
+    title: 'Real nearby care, real ratings',
+    description: "When you need to see someone, we search real hospitals and clinics near you — ranked by real Google ratings, not a stale directory.",
+  },
   {
     icon: CalendarCheck,
     title: 'Book appointments online',
@@ -39,6 +55,14 @@ const features = [
   },
 ];
 
+const COMPARISON_ROWS = [
+  { old: 'Guess which specialist you even need', mediflow: 'AI figures out the right specialist for you' },
+  { old: "Search directories that don't say if it's actually good", mediflow: 'Real nearby options, ranked by real Google ratings' },
+  { old: 'No idea if this can wait or not', mediflow: 'Clear urgency guidance, every time' },
+  { old: "Advice stops at \"go see a doctor\"", mediflow: 'Self-care guidance plus a real next step' },
+  { old: 'One fixed intake form, every time', mediflow: 'Follow-up questions that adapt to what you said' },
+];
+
 const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
   low: 'bg-green-100 text-green-800 border-green-200',
   medium: 'bg-amber-100 text-amber-800 border-amber-200',
@@ -51,6 +75,7 @@ const HeroTry: React.FC = () => {
     <div className="max-w-xl mx-auto mt-10 text-left">
       <SymptomTriageFlow<DemoTriageResult>
         compact
+        examples={HERO_EXAMPLES}
         onSubmit={(answers) => demoTriage(answers)}
         renderResult={(result, reset) => (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
@@ -162,7 +187,7 @@ export const LandingPage: React.FC = () => {
           Everything you need, as a patient
         </h2>
         <p className="text-center text-gray-500 text-sm mb-10">No training required — it works the way you'd expect.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {features.map((f, i) => {
             const Icon = f.icon;
             return (
@@ -180,6 +205,59 @@ export const LandingPage: React.FC = () => {
               </Card>
             );
           })}
+        </div>
+      </section>
+
+      {/* Comparison table */}
+      <section className="max-w-4xl mx-auto px-6 pb-20">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">A guide, not just a directory</h2>
+        <p className="text-center text-gray-500 text-sm mb-10">Most booking sites stop at a list of names. Here's the difference.</p>
+        <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-100">
+            <div className="px-5 py-3 text-sm font-medium text-gray-500">The usual way</div>
+            <div className="px-5 py-3 text-sm font-semibold text-green-800 bg-green-50">MediFlow</div>
+          </div>
+          {COMPARISON_ROWS.map((row, i) => (
+            <div key={row.old} className={`grid grid-cols-2 ${i !== COMPARISON_ROWS.length - 1 ? 'border-b border-gray-100' : ''}`}>
+              <div className="px-5 py-4 text-sm text-gray-500 flex items-start gap-2.5">
+                <X className="h-4 w-4 text-gray-300 shrink-0 mt-0.5" />
+                {row.old}
+              </div>
+              <div className="px-5 py-4 text-sm text-gray-800 bg-green-50/40 flex items-start gap-2.5">
+                <Check className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
+                {row.mediflow}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Trust */}
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <div className="rounded-2xl bg-gray-900 text-white px-6 sm:px-12 py-14 text-center">
+          <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3.5 py-1 text-xs font-medium text-green-300 mb-5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Built to be honest with you
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">No fake doctor lists. Ever.</h2>
+          <p className="text-gray-300 max-w-xl mx-auto mb-8">
+            When MediFlow suggests where to go, it's a real place with a real rating — never invented data
+            dressed up to look convincing.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <p className="font-medium text-white text-sm mb-1">Real ratings</p>
+              <p className="text-gray-400 text-xs">Sourced live from Google, not sample data baked into a demo.</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <p className="font-medium text-white text-sm mb-1">Clearly labeled demo data</p>
+              <p className="text-gray-400 text-xs">Anything that isn't real — like MediFlow's own demo network — says so.</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+              <p className="font-medium text-white text-sm mb-1">Free to try, right now</p>
+              <p className="text-gray-400 text-xs">No credit card. Try the AI triage above before you sign up for anything.</p>
+            </div>
+          </div>
         </div>
       </section>
 

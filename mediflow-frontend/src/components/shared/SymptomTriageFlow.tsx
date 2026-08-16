@@ -22,6 +22,8 @@ interface SymptomTriageFlowProps<T> {
   /** Renders the free-text step as a rounded pill instead of a full textarea card. */
   compact?: boolean;
   slowLoadMessage?: string;
+  /** Clickable example symptoms shown before the visitor types anything. */
+  examples?: string[];
 }
 
 const Chip: React.FC<{ selected?: boolean; onClick: () => void; children: React.ReactNode }> = ({ selected, onClick, children }) => (
@@ -38,7 +40,7 @@ const Chip: React.FC<{ selected?: boolean; onClick: () => void; children: React.
   </button>
 );
 
-export function SymptomTriageFlow<T>({ onSubmit, renderResult, compact, slowLoadMessage }: SymptomTriageFlowProps<T>) {
+export function SymptomTriageFlow<T>({ onSubmit, renderResult, compact, slowLoadMessage, examples }: SymptomTriageFlowProps<T>) {
   const [step, setStep] = useState<Step>('input');
   const [symptoms, setSymptoms] = useState('');
   const [duration, setDuration] = useState<Duration | null>(null);
@@ -110,30 +112,47 @@ export function SymptomTriageFlow<T>({ onSubmit, renderResult, compact, slowLoad
 
   if (step === 'input') {
     return compact ? (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          submitInitialSymptoms(symptoms);
-        }}
-        className="flex items-center gap-2 bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-green-300 transition-all p-1.5 pl-5"
-      >
-        <Sparkles className="h-4 w-4 text-green-600 shrink-0" />
-        <input
-          value={symptoms}
-          onChange={(e) => setSymptoms(e.target.value)}
-          placeholder="Try it — describe how you're feeling..."
-          className="flex-1 bg-transparent border-0 outline-none text-sm text-gray-800 placeholder:text-gray-400 py-2"
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!symptoms.trim()}
-          className="rounded-full bg-green-600 hover:bg-green-700 text-white shrink-0 h-9 w-9"
-          aria-label="Check symptoms"
+      <div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submitInitialSymptoms(symptoms);
+          }}
+          className="flex items-center gap-2 bg-white rounded-full border border-gray-200 shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-green-300 transition-all p-1.5 pl-5"
         >
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+          <Sparkles className="h-4 w-4 text-green-600 shrink-0" />
+          <input
+            value={symptoms}
+            onChange={(e) => setSymptoms(e.target.value)}
+            placeholder="Try it — describe how you're feeling..."
+            className="flex-1 bg-transparent border-0 outline-none text-sm text-gray-800 placeholder:text-gray-400 py-2"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!symptoms.trim()}
+            className="rounded-full bg-green-600 hover:bg-green-700 text-white shrink-0 h-9 w-9"
+            aria-label="Check symptoms"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+        {examples && examples.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mt-3 justify-center">
+            <span className="text-xs text-gray-400">Try asking:</span>
+            {examples.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => submitInitialSymptoms(ex)}
+                className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-800 transition-colors"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     ) : (
       <form
         onSubmit={(e) => {
@@ -151,6 +170,21 @@ export function SymptomTriageFlow<T>({ onSubmit, renderResult, compact, slowLoad
         <Button type="submit" disabled={!symptoms.trim()} className="bg-green-600 hover:bg-green-700 text-white transition-colors">
           Check my symptoms
         </Button>
+        {examples && examples.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-400">Try:</span>
+            {examples.map((ex) => (
+              <button
+                key={ex}
+                type="button"
+                onClick={() => submitInitialSymptoms(ex)}
+                className="text-xs px-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-600 hover:border-green-300 hover:bg-green-50 hover:text-green-800 transition-colors"
+              >
+                {ex}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
     );
   }

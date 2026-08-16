@@ -1,5 +1,5 @@
-// Finds real, actual nearby healthcare places for the authenticated
-// dashboard (not the offline demo, which is explicitly network-free).
+// Finds real, actual nearby healthcare places — used both in the
+// authenticated dashboard and (via demoMode) on the public /demo page.
 //
 // Two real data sources, tried in order:
 //   1. Google Places (via our backend, so the API key stays server-side)
@@ -58,9 +58,10 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-async function fetchGooglePlaces(lat: number, lng: number, category: 'emergency' | 'general', keyword?: string): Promise<NearbyPlace[] | null> {
+async function fetchGooglePlaces(lat: number, lng: number, category: 'emergency' | 'general', keyword?: string, demoMode?: boolean): Promise<NearbyPlace[] | null> {
   try {
-    const res = await api.get('/api/places/nearby', { params: { lat, lng, category, keyword } });
+    const path = demoMode ? '/api/places/demo/nearby' : '/api/places/nearby';
+    const res = await api.get(path, { params: { lat, lng, category, keyword } });
     if (!res.data?.configured) return null; // key not set up — fall back to OSM
     return (res.data.places || []).map((p: any) => ({
       name: p.name,
@@ -116,14 +117,15 @@ async function fetchOsmPlaces(lat: number, lng: number, category: 'emergency' | 
  * includes clinics, doctors' offices, and pharmacies too. `keyword` (e.g.
  * "Cardiology") biases the real Google results toward that specialty when
  * available — ignored by the OSM fallback, which can't do keyword search.
+ * `demoMode` routes through the public, unauthenticated demo endpoint.
  */
-export async function findNearbyCare(category: 'emergency' | 'general', keyword?: string): Promise<NearbyCareResult> {
+export async function findNearbyCare(category: 'emergency' | 'general', keyword?: string, demoMode?: boolean): Promise<NearbyCareResult> {
   const position = await getCurrentPosition().catch(() => {
     throw new Error('Location access was denied or unavailable. You can search manually instead.');
   });
   const { latitude, longitude } = position.coords;
 
-  const googlePlaces = await fetchGooglePlaces(latitude, longitude, category, keyword);
+  const googlePlaces = await fetchGooglePlaces(latitude, longitude, category, keyword, demoMode);
   if (googlePlaces && googlePlaces.length > 0) {
     return { source: 'google', places: googlePlaces };
   }

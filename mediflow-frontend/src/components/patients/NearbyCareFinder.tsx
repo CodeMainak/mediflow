@@ -12,9 +12,11 @@ interface NearbyCareFinderProps {
   keyword?: string;
   /** Runs the search immediately instead of waiting for a click. */
   autoStart?: boolean;
+  /** Uses the public, unauthenticated demo endpoint instead of the authenticated one. */
+  demoMode?: boolean;
 }
 
-export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, label, keyword, autoStart }) => {
+export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, label, keyword, autoStart, demoMode }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [places, setPlaces] = useState<NearbyPlace[]>([]);
   const [source, setSource] = useState<PlaceSource>('osm');
@@ -24,7 +26,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
     setStatus('loading');
     setError('');
     try {
-      const result = await findNearbyCare(category, keyword);
+      const result = await findNearbyCare(category, keyword, demoMode);
       setPlaces(result.places);
       setSource(result.source);
       setStatus(result.places.length > 0 ? 'done' : 'error');
@@ -33,7 +35,7 @@ export const NearbyCareFinder: React.FC<NearbyCareFinderProps> = ({ category, la
       setError(err?.message || 'Something went wrong. You can search manually instead.');
       setStatus('error');
     }
-  }, [category, keyword]);
+  }, [category, keyword, demoMode]);
 
   useEffect(() => {
     if (autoStart) run();

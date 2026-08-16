@@ -53,3 +53,14 @@ export const messageLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+// Stricter limiting for public, unauthenticated demo endpoints that call
+// paid third-party APIs (OpenAI, Google Places) — no login required, so
+// this is the only thing standing between a visitor and unbounded cost.
+export const demoLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: process.env['NODE_ENV'] === 'production' ? 20 : 200,
+    message: "Too many demo requests from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+});

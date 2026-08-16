@@ -57,7 +57,7 @@ const EMERGENCY_KEYWORDS = [
 ];
 
 const RULES: { keywords: string[]; specialization: string; urgency: Urgency }[] = [
-    { keywords: ["chest pain", "heart", "palpitation", "blood pressure"], specialization: "Cardiology", urgency: "high" },
+    { keywords: ["chest", "heart", "palpitation", "blood pressure"], specialization: "Cardiology", urgency: "high" },
     { keywords: ["skin", "rash", "acne", "itch", "mole"], specialization: "Dermatology", urgency: "low" },
     { keywords: ["bone", "fracture", "joint", "back pain", "sprain", "knee", "shoulder"], specialization: "Orthopedics", urgency: "medium" },
     { keywords: ["child", "infant", "baby", "toddler"], specialization: "Pediatrics", urgency: "medium" },
