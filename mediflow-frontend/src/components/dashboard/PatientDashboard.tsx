@@ -25,12 +25,10 @@ import {
   AlertCircle,
   Phone,
   Droplet,
-  CalendarDays,
   Loader2,
 } from 'lucide-react';
 import { mockAppointments, mockUsers, mockPrescriptions } from '../../data/mockData';
 import { useAuth } from '../../context/AuthContext';
-import { AppointmentBookingForm } from '../appointments/AppointmentBookingForm';
 import { NearbyCareFinder } from '../patients/NearbyCareFinder';
 import { getAppointments, deleteAppointment } from '../../services/appointmentService';
 import { getRecentActivities } from '../../services/activityService';
@@ -48,7 +46,6 @@ export const PatientDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   // State management
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [manageDialogOpen, setManageDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -137,29 +134,15 @@ export const PatientDashboard: React.FC = () => {
 
   const nextAppointment = upcomingAppointments[0];
 
-  // Re-added definition for activePrescriptions (as fixed previously)
   const activePrescriptions = patientPrescriptions.filter(presc => {
-    const prescDate = new Date(presc.date);
+    // Real API prescriptions carry a Mongoose createdAt; only legacy mock
+    // data ever had a `date` field.
+    const prescDate = new Date(presc.createdAt || presc.date);
+    if (Number.isNaN(prescDate.getTime())) return false;
     const now = new Date();
     const daysDiff = Math.floor((now.getTime() - prescDate.getTime()) / (1000 * 60 * 60 * 24));
     return daysDiff <= 30; // Active if prescribed within last 30 days
   });
-
-  // Handler to refresh appointments after booking
-  const handleBookingSuccess = async () => {
-    setBookingDialogOpen(false);
-    try {
-      const response = await getAppointments();
-      setAppointments(response.data || []);
-
-      // Refresh activities
-      const recentActivities = await getRecentActivities(user?.id);
-      setActivities(recentActivities);
-
-      toast.success('Appointment booked successfully!');
-    } catch (err) {
-    }
-  };
 
   // Open manage dialog
   const handleManageAppointment = (appointment: any) => {
@@ -236,25 +219,13 @@ export const PatientDashboard: React.FC = () => {
 
       {/* 1. Welcome Banner (The first direct child) */}
       <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white p-6 rounded-xl shadow-lg" style={{ margin: "40px 0" }}>
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-extrabold text-white mb-1">
-              Hello, {user?.name}
-            </h1>
-            <p className="text-lg text-emerald-100 flex items-center">
-              <Shield className="h-5 w-5 mr-2 text-emerald-300" />
-              Your personalized health dashboard is ready.
-            </p>
-          </div>
-
-          <Button
-            onClick={() => setBookingDialogOpen(true)}
-            className="bg-white hover:bg-gray-100 text-emerald-700 font-semibold text-base px-6 py-3 shadow-lg hidden sm:flex"
-          >
-            <CalendarDays className="h-5 w-5 mr-2" />
-            Book New Appointment
-          </Button>
-        </div>
+        <h1 className="text-3xl font-extrabold text-white mb-1">
+          Hello, {user?.name}
+        </h1>
+        <p className="text-lg text-emerald-100 flex items-center">
+          <Shield className="h-5 w-5 mr-2 text-emerald-300" />
+          Your personalized health dashboard is ready.
+        </p>
       </div>
 
       {/* 1b. AI Symptom Checker */}
@@ -380,16 +351,7 @@ export const PatientDashboard: React.FC = () => {
                 <div className="text-center py-10 border-2 border-dashed border-emerald-300 rounded-lg bg-emerald-50/50 py-4">
                   <Calendar className="mx-auto h-12 w-12 text-emerald-500 mb-4" />
                   <p className="text-emerald-800 font-medium text-lg mb-4">You're all caught up!</p>
-                  <div className="flex flex-col items-center gap-3">
-                    <NearbyCareFinder category="general" label="Find real care near you" />
-                    <button
-                      type="button"
-                      onClick={() => setBookingDialogOpen(true)}
-                      className="text-xs text-emerald-700 hover:underline"
-                    >
-                      Or book within MediFlow's demo network
-                    </button>
-                  </div>
+                  <NearbyCareFinder category="general" label="Find real care near you" />
                 </div>
               ) : (
                 upcomingAppointments.map((appointment) => {
@@ -599,25 +561,6 @@ export const PatientDashboard: React.FC = () => {
       <div style={{ margin: "40px 0" }}>
         <RecentActivityLog activities={activities} loading={activitiesLoading} />
       </div>
-
-      {/* Appointment Booking Dialog */}
-      <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center text-2xl">
-              <CalendarDays className="mr-2 h-6 w-6 text-emerald-600" />
-              Book a New Appointment
-            </DialogTitle>
-            <DialogDescription>
-              Schedule an appointment with one of our healthcare professionals
-            </DialogDescription>
-          </DialogHeader>
-          <AppointmentBookingForm
-            onSuccess={handleBookingSuccess}
-            onCancel={() => setBookingDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Manage Appointment Dialog */}
       <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
