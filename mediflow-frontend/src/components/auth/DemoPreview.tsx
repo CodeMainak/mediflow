@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Alert, AlertDescription } from '../ui/alert';
@@ -41,6 +41,11 @@ const URGENCY_LABEL: Record<TriageResult['urgency'], string> = {
 };
 
 const DemoSymptomChecker: React.FC = () => {
+  const location = useLocation();
+  // Carries over whatever was typed into the landing page's hero teaser, so
+  // clicking through here doesn't require retyping the same symptom.
+  const carriedOverSymptoms = (location.state as { symptoms?: string } | null)?.symptoms;
+
   return (
     <Card className="border border-gray-100 shadow-sm mb-8">
       <CardContent className="pt-6 pb-6">
@@ -54,6 +59,7 @@ const DemoSymptomChecker: React.FC = () => {
         </p>
 
         <AiSymptomChat<TriageResult>
+          initialMessage={carriedOverSymptoms}
           onMessage={async (messages: ChatMessage[]) => {
             const res = await chatSymptomsDemo(messages);
             return res.data.done ? { done: true, result: res.data } : { done: false, question: res.data.question, quickReplies: res.data.quickReplies };

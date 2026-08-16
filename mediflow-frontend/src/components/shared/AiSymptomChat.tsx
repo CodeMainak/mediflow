@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -21,6 +21,8 @@ interface AiSymptomChatProps<T> {
     messages: ChatMessage[]
   ) => Promise<{ done: true; result: T } | { done: false; question: string; quickReplies?: string[] }>;
   renderResult: (result: T, reset: () => void) => React.ReactNode;
+  /** If provided, immediately starts the conversation with this text instead of showing the empty input — e.g. carrying over what was typed on the landing page. */
+  initialMessage?: string;
 }
 
 const Chip: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ onClick, children }) => (
@@ -33,7 +35,7 @@ const Chip: React.FC<{ onClick: () => void; children: React.ReactNode }> = ({ on
   </button>
 );
 
-export function AiSymptomChat<T>({ onMessage, renderResult }: AiSymptomChatProps<T>) {
+export function AiSymptomChat<T>({ onMessage, renderResult, initialMessage }: AiSymptomChatProps<T>) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [symptomsInput, setSymptomsInput] = useState('');
   const [pending, setPending] = useState<PendingQuestion | null>(null);
@@ -42,6 +44,7 @@ export function AiSymptomChat<T>({ onMessage, renderResult }: AiSymptomChatProps
   const [error, setError] = useState('');
   const [result, setResult] = useState<T | null>(null);
   const isSlow = useSlowLoad(loading);
+  const autoStarted = useRef(false);
 
   const reset = () => {
     setMessages([]);
@@ -71,6 +74,14 @@ export function AiSymptomChat<T>({ onMessage, renderResult }: AiSymptomChatProps
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (initialMessage && initialMessage.trim() && !autoStarted.current) {
+      autoStarted.current = true;
+      sendTurn([{ role: 'user', content: initialMessage.trim() }]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialMessage]);
 
   const submitInitial = (e: React.FormEvent) => {
     e.preventDefault();

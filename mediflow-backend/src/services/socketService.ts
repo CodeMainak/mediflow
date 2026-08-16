@@ -13,7 +13,11 @@ const onlineUsers = new Map<string, string>(); // userId -> socketId
 export const initializeSocket = (httpServer: HTTPServer) => {
     const io = new SocketIOServer(httpServer, {
         cors: {
-            origin: process.env.FRONTEND_URL || "http://localhost:3000",
+            // Matches the REST API's CORS policy (server.ts) — the frontend
+            // is deployed across multiple origins (Vercel default domain,
+            // custom domain), so this reflects the request's own origin
+            // rather than checking against one hardcoded FRONTEND_URL.
+            origin: true,
             methods: ["GET", "POST"],
             credentials: true,
         },

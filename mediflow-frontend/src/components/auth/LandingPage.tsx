@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -71,12 +71,16 @@ const URGENCY_STYLES: Record<DemoTriageResult['urgency'], string> = {
 };
 
 const HeroTry: React.FC = () => {
+  const [lastSymptoms, setLastSymptoms] = useState('');
   return (
     <div className="max-w-xl mx-auto mt-10 text-left">
       <SymptomTriageFlow<DemoTriageResult>
         compact
         examples={HERO_EXAMPLES}
-        onSubmit={(answers) => demoTriage(answers)}
+        onSubmit={(answers) => {
+          setLastSymptoms(answers.symptoms);
+          return demoTriage(answers);
+        }}
         renderResult={(result, reset) => (
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-5">
             {result.urgency === 'emergency' ? (
@@ -98,7 +102,11 @@ const HeroTry: React.FC = () => {
               </>
             )}
             <div className="flex items-center justify-between mt-3">
-              <Link to="/demo" className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline">
+              <Link
+                to="/demo"
+                state={{ symptoms: lastSymptoms }}
+                className="inline-flex items-center gap-1 text-xs text-green-700 hover:underline"
+              >
                 See the full experience <ArrowRight className="h-3 w-3" />
               </Link>
               <button onClick={reset} className="text-xs text-gray-400 hover:text-gray-600">
