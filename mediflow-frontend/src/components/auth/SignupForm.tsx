@@ -36,10 +36,8 @@ export const SignupForm: React.FC = () => {
 
       <div className="relative w-full max-w-md animate-fade-in-up">
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex mb-6">
-            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-3.5 rounded-2xl shadow-md">
-              <MedicalLogo size="md" />
-            </div>
+          <Link to="/" className="inline-flex mb-6 shadow-md rounded-2xl">
+            <MedicalLogo size="lg" />
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
             Create your account

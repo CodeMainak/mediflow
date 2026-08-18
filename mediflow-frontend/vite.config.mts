@@ -61,6 +61,20 @@ export default defineConfig({
         drop_debugger: true,
       },
     },
+    modulePreload: {
+      // By default Vite injects <link rel="modulepreload"> for every chunk
+      // reachable from the entry, including authenticated-app routes
+      // (dashboard/appointments/chat/socket) that a first-time, anonymous
+      // visitor to "/" doesn't need yet — on a slow connection that's ~300KB
+      // of dead weight before they've even seen the landing page. Only skip
+      // this for the initial HTML document; runtime preloading when a route
+      // is actually navigated to (after login) is left untouched.
+      resolveDependencies: (_filename, deps, { hostType }) => {
+        if (hostType !== 'html') return deps;
+        const deferred = ['dashboard', 'appointments', 'chat', 'vendor-socket', 'PharmacyDashboard', 'PatientList', 'PrescriptionManager', 'ProfileSettings'];
+        return deps.filter((dep) => !deferred.some((name) => dep.includes(name)));
+      },
+    },
     rollupOptions: {
       output: {
         // Manual chunks for better code splitting

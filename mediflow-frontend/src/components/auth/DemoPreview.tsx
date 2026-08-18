@@ -127,8 +127,8 @@ export const DemoPreview: React.FC = () => {
 
       {/* Nav */}
       <nav className="relative max-w-3xl mx-auto flex items-center justify-between px-6 py-6">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-2 rounded-xl shadow-sm">
+        <Link to="/" className="flex items-center gap-3 group">
+          <div className="shadow-sm rounded-xl group-hover:scale-105 transition-transform duration-300">
             <MedicalLogo size="sm" />
           </div>
           <span className="text-lg font-bold text-gray-900 tracking-tight">MediFlow</span>

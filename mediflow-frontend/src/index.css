@@ -4246,10 +4246,25 @@ html {
 .delay-3 { animation-delay: 0.24s; }
 .delay-4 { animation-delay: 0.32s; }
 
+/* WCAG 2.3.3 — users who ask the OS for reduced motion get none of it:
+   entrance fades, the live-status ping, scroll-reveal, and hover lifts
+   all resolve to their end state instantly instead of animating. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-fade-in-up {
-    animation: none;
-    opacity: 1;
-    transform: none;
+  /* Functional loading spinners (.animate-spin) are excluded — they
+     communicate real in-progress state, not decoration, and freezing
+     them would remove that feedback rather than reduce motion. */
+  *:not(.animate-spin), *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-fade-in-up,
+  .animate-ping,
+  .animate-pulse {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

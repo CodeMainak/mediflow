@@ -45,10 +45,8 @@ export const LoginForm: React.FC = () => {
       <div className="relative w-full max-w-md animate-fade-in-up">
         {/* Header */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex mb-6">
-            <div className="bg-gradient-to-br from-green-600 to-emerald-700 p-3.5 rounded-2xl shadow-md">
-              <MedicalLogo size="md" />
-            </div>
+          <Link to="/" className="inline-flex mb-6 shadow-md rounded-2xl">
+            <MedicalLogo size="lg" />
           </Link>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight mb-1">
             Welcome back
@@ -136,12 +134,11 @@ export const LoginForm: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Demo credentials — tucked away, not the focus of the page */}
         <Collapsible open={showDemo} onOpenChange={setShowDemo} className="mt-4">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 py-2 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 py-2 transition-colors"
             >
               Reviewing this project? View demo credentials
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showDemo ? 'rotate-180' : ''}`} />
