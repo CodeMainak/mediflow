@@ -1,10 +1,11 @@
 name: Deploy to AWS ECS
 
 on:
-  push:
-    branches:
-      - main
-      - production
+  # Not the active deployment path (that's Render + Vercel) — this was
+  # firing and failing on every single push (34/34 failed runs, no AWS
+  # credentials/infra configured), so it no longer runs automatically.
+  # Left in place and runnable manually if this deployment path is ever
+  # actually set up.
   workflow_dispatch:
 
 env:
