@@ -10,7 +10,7 @@ import { chatSymptoms, getSymptomHistory } from '../../services/aiService';
 import { Sparkles, AlertTriangle, RotateCcw, HeartPulse, Wand2, History, ChevronDown } from 'lucide-react';
 
 interface TriageResult {
-  mode: 'ai' | 'fallback';
+  mode: 'ai' | 'fallback' | 'safety';
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
@@ -70,8 +70,8 @@ export const SymptomChecker: React.FC = () => {
       </CardHeader>
       <CardContent>
         <AiSymptomChat<TriageResult>
-          onMessage={async (messages: ChatMessage[]) => {
-            const res = await chatSymptoms(messages);
+          onMessage={async (messages: ChatMessage[], signal: AbortSignal) => {
+            const res = await chatSymptoms(messages, signal);
             if (res.data.done) {
               refreshHistory();
               return { done: true, result: res.data };

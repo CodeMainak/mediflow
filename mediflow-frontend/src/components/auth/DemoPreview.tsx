@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 interface TriageResult {
-  mode: 'ai' | 'fallback';
+  mode: 'ai' | 'fallback' | 'safety';
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
@@ -60,8 +60,8 @@ const DemoSymptomChecker: React.FC = () => {
 
         <AiSymptomChat<TriageResult>
           initialMessage={carriedOverSymptoms}
-          onMessage={async (messages: ChatMessage[]) => {
-            const res = await chatSymptomsDemo(messages);
+          onMessage={async (messages: ChatMessage[], signal: AbortSignal) => {
+            const res = await chatSymptomsDemo(messages, signal);
             return res.data.done ? { done: true, result: res.data } : { done: false, question: res.data.question, quickReplies: res.data.quickReplies };
           }}
           renderResult={(result, reset) => (
