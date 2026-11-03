@@ -7,7 +7,7 @@ export interface ISymptomCheck extends Document {
     urgency: "low" | "medium" | "high" | "emergency";
     reasoning: string;
     selfCare: string;
-    mode: "ai" | "fallback";
+    mode: "ai" | "fallback" | "safety";
     createdAt: Date;
 }
 
@@ -19,7 +19,7 @@ const symptomCheckSchema = new Schema<ISymptomCheck>(
         urgency: { type: String, enum: ["low", "medium", "high", "emergency"], required: true },
         reasoning: { type: String, required: true },
         selfCare: { type: String, required: true },
-        mode: { type: String, enum: ["ai", "fallback"], required: true },
+        mode: { type: String, enum: ["ai", "fallback", "safety"], required: true },
     },
     { timestamps: true }
 );
