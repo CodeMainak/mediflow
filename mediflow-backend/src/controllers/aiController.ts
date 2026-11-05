@@ -155,6 +155,8 @@ const EMERGENCY_TURN: AgentTurn = {
 };
 
 const MAX_QUESTIONS = 3;
+// The opening message, then a question and answer for each follow-up.
+const MAX_MESSAGES = 1 + 2 * MAX_QUESTIONS;
 
 /**
  * No-AI fallback. Genuinely adaptive (question is chosen from the
@@ -479,10 +481,21 @@ function sanitizeMessages(raw: unknown): ChatMessage[] {
 
 export const symptomChat = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
+        // Checked on the raw input: every extra message would be paid for as model input.
+        if (Array.isArray(req.body?.messages) && req.body.messages.length > MAX_MESSAGES) {
+            res.status(400).json({ msg: "Conversation too long." });
+            return;
+        }
+
         const messages = sanitizeMessages(req.body?.messages);
 
         if (messages.length === 0 || messages[0].role !== "user" || !messages[0].content.trim()) {
             res.status(400).json({ msg: "Please describe your symptoms to start." });
+            return;
+        }
+        // "???" or "123" can't be triaged, so it isn't worth a paid call. Any language counts.
+        if (!/\p{L}.*\p{L}.*\p{L}/su.test(messages[0].content)) {
+            res.status(400).json({ msg: "Please describe your symptoms in a few words." });
             return;
         }
         const assistantTurns = messages.filter((m) => m.role === "assistant").length;

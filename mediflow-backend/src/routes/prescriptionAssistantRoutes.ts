@@ -4,6 +4,7 @@ import { protect, onlyRole } from "../middlewares/authMiddleware";
 import { uploadLimiter } from "../middlewares/securityMiddleware";
 import {
     MAX_FILE_BYTES,
+    guardUpload,
     createUpload,
     listUploads,
     getUpload,
@@ -40,7 +41,7 @@ const receiveFile = (req: Request, res: Response, next: NextFunction): void => {
 // Patients only: staff have no route to these documents.
 router.use(protect, onlyRole(["Patient"]));
 
-router.post("/uploads", uploadLimiter, receiveFile, createUpload);
+router.post("/uploads", uploadLimiter, guardUpload, receiveFile, createUpload);
 router.get("/uploads", listUploads);
 router.get("/uploads/:id", getUpload);
 router.get("/uploads/:id/file", getUploadFile);

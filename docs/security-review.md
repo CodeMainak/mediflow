@@ -42,9 +42,20 @@ Review of the whole backend, plus the new prescription feature. The authorizatio
 | All API calls | 100 per 15 min per IP | |
 | Uploads | 20 per hour per IP | |
 | Waiting files | 5 per patient | |
+| New accounts | 10 per hour per IP | |
+| Upload attempts | 10 per patient per day, including rejected and deleted ones | `UPLOAD_USER_DAILY_LIMIT` |
+| Non-prescriptions | After 3 in a day, that account's uploads pause until the next day | `UPLOAD_USER_DAILY_REJECTED_LIMIT` |
 | Triage AI calls | 40 per patient, 300 for the demo, 2000 in total, per day | `AI_TRIAGE_USER_DAILY_LIMIT`, `AI_TRIAGE_DEMO_DAILY_LIMIT`, `AI_TRIAGE_DAILY_LIMIT` |
 | Extraction AI calls | 5 per patient, 100 in total, per day | `AI_EXTRACTION_USER_DAILY_LIMIT`, `AI_EXTRACTION_DAILY_LIMIT` |
-| Tokens per call | 400 for triage, 1500 for extraction | |
+| Tokens per day, all AI combined | 500,000, the closest thing here to a spending limit | `AI_DAILY_TOKEN_LIMIT` |
+| Output tokens per call | 400 for triage, 1500 for extraction | |
+| Triage transcript | 7 messages of up to 500 characters, and at least 3 letters to start | |
+| PDF length | 3 pages (rough check: pages in compressed streams aren't visible, so some long PDFs get through) | |
+| Minimum file size | 1 KB | |
+
+Calls that never reach OpenAI: a repeat upload of the same file by the same patient, a second read of a document already read, and anything rejected above. Readings are never reused between patients. There are no automatic retries.
+
+The token budget is checked before each call and counts tokens after each reply, so calls already running can go slightly over. Calls that fail or time out report no tokens, so only their call count limits them.
 
 AI quotas are atomic, so concurrent requests can't overspend. They **fail closed**: if the count can't be checked, no paid call is made and the non-AI path answers. These defaults are starting guesses; set them from your OpenAI budget. A separate hard spending limit in the OpenAI dashboard is still recommended.
 
@@ -66,7 +77,7 @@ Logs carry event, outcome, HTTP status, latency and counts. They never carry pat
 
 | Data | Kept for | Patient can delete |
 | --- | --- | --- |
-| Original prescription file | Until confirmed, 24 hours at most | Yes |
+| Original prescription file | Until confirmed, 24 hours at most. Deleted immediately if the model says it isn't a prescription | Yes |
 | Confirmed prescription details | 30 days | Yes |
 | Symptom check history | **No automatic expiry yet: your decision.** 12 months is a common starting point. It wasn't added because it would permanently delete existing data on deploy | Yes, new "Delete all my past checks" button |
 | Per-user AI quota counters | 2 days | Automatic |
@@ -97,6 +108,8 @@ Database backups aren't covered by these periods and would need their own policy
 - **Socket events aren't validated:** any signed-in user can send typing or message events to any user id. They aren't saved, but the messaging rules should be applied here too.
 - **Rate limits are per process and in memory,** so they reset on restart and need a shared store before running more than one instance. The same applies to socket presence and reminder dedupe.
 - **No malware scanning** of uploaded files.
+- **Many accounts can still use up the shared daily limits.** Signups are limited per IP, but rotating IPs gets around that, and accounts need no email verification. Spending stays capped, and the feature falls back to manual entry, but real patients would lose automatic reading until the next day. Email verification or a CAPTCHA at signup is the next step, and a per-network limit at the hosting or CDN layer would add to it.
+- **Request-size checks rely on `Content-Length`.** A request without one is still cut off at 5 MB by the upload parser, after that much has been received.
 
 ## Deploying these changes
 

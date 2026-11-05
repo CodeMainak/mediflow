@@ -218,6 +218,7 @@ describe('describeError', () => {
       { response: { status: 429, data: 'Too many demo requests from this IP, please try again later' } },
       'Too many demo requests from this IP, please try again later',
     ],
+    ['a rate limit with a JSON message', { response: { status: 429, data: { msg: "You've reached today's upload limit." } } }, "You've reached today's upload limit."],
     ['a rate limit without a body', { response: { status: 429 } }, 'Too many requests right now. Please wait a few minutes and try again.'],
     ['a 400 with a server message', { response: { status: 400, data: { msg: 'Please describe your symptoms to start.' } } }, 'Please describe your symptoms to start.'],
     ['a 500', { response: { status: 500, data: { msg: 'Server error', error: 'stack details' } } }, 'Something went wrong on our side. Please try again.'],

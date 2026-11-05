@@ -2,17 +2,21 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } 
 import request from "supertest";
 import fs from "fs";
 import path from "path";
+import mongoose from "mongoose";
 import { createApp } from "../app";
 import { PrescriptionFile } from "../models/PrescriptionFile";
 import { PrescriptionUpload } from "../models/PrescriptionUpload";
 import { AiUsage } from "../models/AiUsage";
 import { startDatabase, stopDatabase, clearDatabase, signedInUser } from "../test/harness";
-import { detectFileType, MAX_FILE_BYTES } from "./prescriptionAssistantController";
+import { countPdfPages, detectFileType, MAX_FILE_BYTES } from "./prescriptionAssistantController";
 
 const app = createApp();
 const API = "/api/prescription-assistant/uploads";
 const fixture = (name: string) => fs.readFileSync(path.join(__dirname, "../../test-fixtures/prescriptions", name));
 const PNG = fixture("printed.png");
+// Same format, different content, so it isn't treated as a repeat of PNG.
+const OTHER_PNG = Buffer.concat([PNG, Buffer.from("different")]);
+const pdfWithPages = (pages: number) => Buffer.from(`%PDF-1.4\n<< /Type /Pages /Count ${pages} >>\n${"<< /Type /Page >>\n".repeat(pages)}${" ".repeat(1024)}`);
 
 const reading = {
     isPrescription: true,
@@ -99,6 +103,24 @@ describe("prescription assistant API", () => {
 
             expect(res.status).toBe(413);
             expect(res.body.msg).toContain("5 MB");
+        });
+
+        it("should reject a file too small to be readable, before any paid call", async () => {
+            const { auth } = await signedInUser("Patient");
+            const tiny = Buffer.concat([PNG.subarray(0, 8), Buffer.alloc(100)]);
+
+            expect((await upload(auth, tiny)).status).toBe(400);
+            expect(await PrescriptionUpload.countDocuments()).toBe(0);
+        });
+
+        it("should reject a PDF with too many pages, since each page is paid for", async () => {
+            const { auth } = await signedInUser("Patient");
+
+            const res = await upload(auth, pdfWithPages(4), "long.pdf");
+
+            expect(res.status).toBe(413);
+            expect(res.body.msg).toContain("3 pages");
+            expect((await upload(auth, pdfWithPages(3), "ok.pdf")).status).toBe(201);
         });
 
         it("should reject a request with no file", async () => {
@@ -218,6 +240,90 @@ describe("prescription assistant API", () => {
             expect(again.body.status).toBe("extracted");
         });
 
+        it("should not pay again when a patient uploads the same file again", async () => {
+            const { auth } = await signedInUser("Patient");
+            const first = await upload(auth);
+            openAiReturns(reading);
+            await request(app).post(`${API}/${first.body._id}/extract`).set(auth);
+            const second = await upload(auth);
+
+            const res = await request(app).post(`${API}/${second.body._id}/extract`).set(auth);
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(res.body).toMatchObject({ status: "extracted", hasFile: true });
+            expect(res.body.extraction.medications[0].name).toBe("Salbutamol inhaler");
+        });
+
+        it("should reuse a reading without using the patient's daily quota", async () => {
+            vi.stubEnv("AI_EXTRACTION_USER_DAILY_LIMIT", "1");
+            const { auth } = await signedInUser("Patient");
+            const first = await upload(auth);
+            openAiReturns(reading);
+            await request(app).post(`${API}/${first.body._id}/extract`).set(auth);
+            const second = await upload(auth);
+
+            const res = await request(app).post(`${API}/${second.body._id}/extract`).set(auth);
+
+            expect(res.body.status).toBe("extracted");
+        });
+
+        it("should never reuse another patient's reading", async () => {
+            const a = await signedInUser("Patient");
+            const b = await signedInUser("Patient");
+            const first = await upload(a.auth);
+            openAiReturns(reading);
+            await request(app).post(`${API}/${first.body._id}/extract`).set(a.auth);
+            const second = await upload(b.auth);
+            openAiReturns({ ...reading, medications: [{ name: "Metformin", confidence: "high" }] });
+
+            const res = await request(app).post(`${API}/${second.body._id}/extract`).set(b.auth);
+
+            expect(fetchMock).toHaveBeenCalledTimes(2);
+            expect(res.body.extraction.medications[0].name).toBe("Metformin");
+        });
+
+        it("should delete a repeat upload of a document already rejected, without paying", async () => {
+            const { auth } = await signedInUser("Patient");
+            const first = await upload(auth);
+            openAiReturns({ ...reading, isPrescription: false });
+            await request(app).post(`${API}/${first.body._id}/extract`).set(auth);
+            const second = await upload(auth);
+
+            const res = await request(app).post(`${API}/${second.body._id}/extract`).set(auth);
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(res.body).toMatchObject({ extractionFailure: "not_a_prescription", hasFile: false });
+            expect(await PrescriptionFile.countDocuments()).toBe(0);
+        });
+
+        it("should not pay again to re-read a document the model called unreadable", async () => {
+            const { auth } = await signedInUser("Patient");
+            const { body } = await upload(auth);
+            openAiReturns({ ...reading, legibility: "unreadable" });
+            await request(app).post(`${API}/${body._id}/extract`).set(auth);
+
+            const res = await request(app).post(`${API}/${body._id}/extract`).set(auth);
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(res.body.extractionFailure).toBe("unreadable");
+        });
+
+        it("should stop calling OpenAI once the daily token budget is used", async () => {
+            vi.stubEnv("AI_DAILY_TOKEN_LIMIT", "900");
+            const a = await signedInUser("Patient");
+            const b = await signedInUser("Patient");
+            const first = await upload(a.auth);
+            const second = await upload(b.auth, OTHER_PNG);
+            openAiReturns(reading); // reports 900 tokens used
+
+            await request(app).post(`${API}/${first.body._id}/extract`).set(a.auth);
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            const res = await request(app).post(`${API}/${second.body._id}/extract`).set(b.auth);
+
+            expect(fetchMock).toHaveBeenCalledTimes(1);
+            expect(res.body).toMatchObject({ status: "needs_manual", extractionFailure: "budget_exceeded" });
+        });
+
         it("should allow only one of two simultaneous extractions", async () => {
             const { auth } = await signedInUser("Patient");
             const { body } = await upload(auth);
@@ -245,6 +351,40 @@ describe("prescription assistant API", () => {
             expect(res.status).toBe(200);
             expect(res.body).toMatchObject({ status: "needs_manual", extractionFailure: failure });
             expect(res.body.extraction.medications).toEqual([]);
+        });
+
+        it("should delete a document straight away if it isn't a prescription", async () => {
+            const { auth } = await signedInUser("Patient");
+            const { body } = await upload(auth);
+            openAiReturns({ ...reading, isPrescription: false });
+
+            const res = await request(app).post(`${API}/${body._id}/extract`).set(auth);
+
+            expect(res.body.hasFile).toBe(false);
+            expect(await PrescriptionFile.countDocuments()).toBe(0);
+            expect((await request(app).get(`${API}/${body._id}/file`).set(auth)).status).toBe(404);
+        });
+
+        it("should keep an unreadable prescription available to compare against", async () => {
+            const { auth } = await signedInUser("Patient");
+            const { body } = await upload(auth);
+            openAiReturns({ ...reading, legibility: "unreadable" });
+
+            const res = await request(app).post(`${API}/${body._id}/extract`).set(auth);
+
+            expect(res.body.hasFile).toBe(true);
+            expect(await PrescriptionFile.countDocuments()).toBe(1);
+        });
+
+        it("should keep a rejected document from counting against the waiting-files limit", async () => {
+            const { auth } = await signedInUser("Patient");
+            const { body } = await upload(auth);
+            for (let i = 0; i < 4; i++) await upload(auth);
+            openAiReturns({ ...reading, isPrescription: false });
+
+            await request(app).post(`${API}/${body._id}/extract`).set(auth);
+
+            expect((await upload(auth)).status).toBe(201);
         });
 
         it.each([
@@ -289,7 +429,7 @@ describe("prescription assistant API", () => {
             vi.stubEnv("AI_EXTRACTION_USER_DAILY_LIMIT", "1");
             const { auth } = await signedInUser("Patient");
             const first = await upload(auth);
-            const second = await upload(auth);
+            const second = await upload(auth, OTHER_PNG);
             openAiReturns(reading);
 
             await request(app).post(`${API}/${first.body._id}/extract`).set(auth);
@@ -339,6 +479,83 @@ describe("prescription assistant API", () => {
             const usage = await AiUsage.find().lean();
             expect(usage.find((u) => u.kind === "metric")).toMatchObject({ outcome: "ok", count: 1, tokens: 900 });
             expect(JSON.stringify(usage)).not.toContain("Salbutamol");
+        });
+    });
+
+    describe("abuse", () => {
+        const differentFile = (i: number) => Buffer.concat([PNG, Buffer.from(`file-${i}`)]);
+        const rejectOne = async (auth: object, i: number) => {
+            const { body } = await upload(auth, differentFile(i));
+            return request(app).post(`${API}/${body._id}/extract`).set(auth);
+        };
+
+        it("should pause uploads after repeated non-prescriptions, limiting paid reads", async () => {
+            const { auth } = await signedInUser("Patient");
+            openAiReturns({ ...reading, isPrescription: false });
+            for (let i = 0; i < 3; i++) await rejectOne(auth, i);
+
+            const res = await upload(auth, differentFile(99));
+
+            expect(res.status).toBe(429);
+            expect(res.body.msg).toContain("weren't prescriptions");
+            expect(fetchMock).toHaveBeenCalledTimes(3);
+            expect(await PrescriptionFile.countDocuments()).toBe(0);
+        });
+
+        it("should not let deleting uploads reset the pause", async () => {
+            const { auth } = await signedInUser("Patient");
+            openAiReturns({ ...reading, isPrescription: false });
+            for (let i = 0; i < 3; i++) {
+                const res = await rejectOne(auth, i);
+                await request(app).delete(`${API}/${res.body._id}`).set(auth);
+            }
+
+            expect((await upload(auth, differentFile(99))).status).toBe(429);
+        });
+
+        it("should keep the pause to the account that caused it", async () => {
+            const bad = await signedInUser("Patient");
+            const good = await signedInUser("Patient");
+            openAiReturns({ ...reading, isPrescription: false });
+            for (let i = 0; i < 3; i++) await rejectOne(bad.auth, i);
+
+            expect((await upload(good.auth)).status).toBe(201);
+        });
+
+        it("should count every attempt toward the daily limit, even rejected and deleted ones", async () => {
+            vi.stubEnv("UPLOAD_USER_DAILY_LIMIT", "2");
+            const { auth } = await signedInUser("Patient");
+            const junk = Buffer.from("not a real file, and long enough to read");
+
+            expect((await upload(auth, junk)).status).toBe(415);
+            const ok = await upload(auth);
+            await request(app).delete(`${API}/${ok.body._id}`).set(auth);
+
+            const res = await upload(auth);
+            expect(res.status).toBe(429);
+            expect(res.body.msg).toContain("today's upload limit");
+        });
+
+        it("should refuse an oversized request from its header, without counting it", async () => {
+            vi.stubEnv("UPLOAD_USER_DAILY_LIMIT", "1");
+            const { auth } = await signedInUser("Patient");
+
+            const res = await request(app).post(API).set(auth).set("Content-Length", String(50 * 1024 * 1024)).send();
+
+            expect(res.status).toBe(413);
+            expect((await upload(auth)).status).toBe(201);
+        });
+
+        it("should refuse uploads when the counters can't be checked", async () => {
+            const { auth } = await signedInUser("Patient");
+            const readyState = vi.spyOn(mongoose.connection, "readyState", "get");
+            readyState.mockReturnValueOnce(0 as any);
+
+            const res = await upload(auth);
+
+            readyState.mockRestore();
+            expect(res.status).toBe(503);
+            expect(await PrescriptionFile.countDocuments()).toBe(0);
         });
     });
 
@@ -435,6 +652,12 @@ describe("prescription assistant API", () => {
             expect(await PrescriptionUpload.countDocuments()).toBe(0);
             expect(await PrescriptionFile.countDocuments()).toBe(0);
         });
+    });
+
+    it("should count PDF pages without counting the page tree", () => {
+        expect(countPdfPages(fixture("printed.pdf"))).toBe(1);
+        expect(countPdfPages(pdfWithPages(4))).toBe(4);
+        expect(countPdfPages(Buffer.from("no pages here"))).toBe(0);
     });
 
     it("should identify files by their first bytes", () => {

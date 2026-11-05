@@ -55,6 +55,7 @@ All routes need a signed-in patient. Staff get 403. Another patient's upload is 
 | Don't store the filename | Filenames often contain a person's name | The list shows dates only |
 | Rules for specialties, not the LLM | Testable, repeatable, reviewable and not open to prompt injection | Misses brand names and misspellings, and says so |
 | Reject invalid model output, never repair it | A made-up value here would be a made-up medical detail | More cases fall back to manual entry |
+| Hash each file to avoid paying twice | A repeat upload by the same patient reuses the earlier reading | The hash stays with the record for up to 30 days. It's never compared across patients |
 | Don't collect doses at all | In testing, `gpt-4o-mini` read a blurred "500 mg" as "800 mg" at high confidence. Suggestions don't use doses, so collecting them only added risk | Patients check doses on their own prescription, and the screen tells them to |
 | `gpt-4o` for reading, not `gpt-4o-mini` | It passed all six samples where the smaller model failed two, at about the same cost per image (see below) | Depends on a small sample. Override with `PRESCRIPTION_MODEL` |
 | Manual entry on every AI failure | The feature keeps working without AI, or over budget | The patient types more |
@@ -69,7 +70,7 @@ All routes need a signed-in patient. Staff get 403. Another patient's upload is 
 
 ## Privacy and consent
 
-Before upload, the patient is told that the document goes to OpenAI, who can open it here, and when it's deleted. Consent is required and stored with its version and time. Staff have no route to these documents. Requests set `store: false`. See [security-review.md](security-review.md) for retention and logging.
+Before upload, the patient is told to upload only a prescription, that whatever they upload goes to OpenAI, who can open it here, and when it's deleted. A document the model says isn't a prescription is deleted immediately, though OpenAI has already received it by then, because that check happens there. Consent is required and stored with its version and time. Staff have no route to these documents. Requests set `store: false`. See [security-review.md](security-review.md) for retention and logging.
 
 ## Test status
 

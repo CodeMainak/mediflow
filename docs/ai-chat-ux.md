@@ -52,6 +52,6 @@ Run in real Chrome against a real backend, with OpenAI stubbed:
 - [x] Keyboard only: a full triage with Tab and Enter; focus always lands on the next thing to do
 - [x] axe scan (WCAG A and AA): no serious or critical issues. It found and led to fixes for low-contrast text and an unnamed notification button
 
-Still needs a person:
+Checked by hand:
 
-- [ ] Screen reader (VoiceOver: Cmd+F5): "Looking at your symptoms…", each new question, and errors are announced. Automated checks confirm the live regions and roles exist, but not how they actually sound
+- [x] Screen reader (VoiceOver, November 2026): a symptom check on the demo page worked. One point to confirm: the code doesn't announce the result or move focus to it when it appears

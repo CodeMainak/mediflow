@@ -1,14 +1,16 @@
-import { Response } from "express";
+import { NextFunction, Response } from "express";
+import crypto from "crypto";
 import mongoose from "mongoose";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { IUser } from "../models/User";
 import { PrescriptionUpload, IPrescriptionUpload } from "../models/PrescriptionUpload";
 import { PrescriptionFile } from "../models/PrescriptionFile";
-import { reserveAiCall, recordAiOutcome } from "../services/aiBudget";
+import { reserveAiCall, recordAiOutcome, reserveUpload, recordRejectedUpload } from "../services/aiBudget";
 import { extractPrescription, Extraction } from "../services/prescriptionExtraction";
 import { suggestSpecialties, VerifiedDetails } from "../services/specialtyNavigation";
 
-export const CONSENT_VERSION = "2026-11-v1";
+// Bump this whenever the consent text in PrescriptionAssistant.tsx changes.
+export const CONSENT_VERSION = "2026-11-v2";
 export const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +19,10 @@ const RECORD_RETENTION_MS = 30 * DAY_MS;
 const MAX_ACTIVE_FILES = 5; // a free-tier database shouldn't fill up with one patient's scans
 const EXTRACTION_LOCK_MS = 60 * 1000; // a crashed extraction mustn't block retries forever
 const MAX_VERIFIED_ITEMS = 20;
+const MIN_FILE_BYTES = 1024; // smaller than this can't hold a readable document
+export const MAX_PDF_PAGES = 3; // OpenAI charges for every page, and a 5 MB PDF can have hundreds
+// Change this when the prompt or model changes, so earlier readings aren't reused.
+const EXTRACTION_VERSION = "2026-11-v1";
 
 /**
  * Identifies a file by its first bytes. The filename and declared type are
@@ -27,6 +33,15 @@ export function detectFileType(data: Buffer): "image/jpeg" | "image/png" | "appl
     if (data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return "image/png";
     if (data.length >= 5 && data.subarray(0, 5).toString("latin1") === "%PDF-") return "application/pdf";
     return null;
+}
+
+/**
+ * Counts page objects in the raw bytes. A rough check with no PDF library: pages
+ * inside compressed object streams aren't visible, so this can undercount and
+ * some long PDFs will get through. It stops the simple case cheaply.
+ */
+export function countPdfPages(data: Buffer): number {
+    return data.toString("latin1").match(/\/Type\s*\/Page(?![A-Za-z])/g)?.length ?? 0;
 }
 
 /**
@@ -61,6 +76,28 @@ function logExtraction(entry: { outcome: string; status?: number; latencyMs: num
     console.info(JSON.stringify({ event: "prescription_extraction", ...entry }));
 }
 
+/**
+ * Runs before the file is read. A request declaring more than the limit (plus
+ * room for the form fields) is refused without receiving it, and a blocked
+ * account is refused without using bandwidth or memory.
+ */
+export const guardUpload = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+    if (Number(req.headers["content-length"]) > MAX_FILE_BYTES + 64 * 1024) {
+        res.status(413).json({ msg: "Files can be up to 5 MB." });
+        return;
+    }
+    const decision = await reserveUpload(String((req.user as IUser)._id));
+    if (decision === "allowed") {
+        next();
+    } else if (decision === "too_many_rejected") {
+        res.status(429).json({ msg: "Several of your recent files weren't prescriptions, so uploads are paused until tomorrow. Your saved details are still available." });
+    } else if (decision === "budget_exceeded") {
+        res.status(429).json({ msg: "You've reached today's upload limit. Please try again tomorrow." });
+    } else {
+        res.status(503).json({ msg: "Uploads aren't available right now. Please try again shortly." });
+    }
+};
+
 export const createUpload = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         if (req.body?.consent !== "true") {
@@ -74,6 +111,14 @@ export const createUpload = async (req: AuthRequest, res: Response): Promise<voi
         const mimeType = detectFileType(req.file.buffer);
         if (!mimeType) {
             res.status(415).json({ msg: "Only JPG, PNG and PDF files are supported." });
+            return;
+        }
+        if (req.file.size < MIN_FILE_BYTES) {
+            res.status(400).json({ msg: "This file is too small to be a readable document." });
+            return;
+        }
+        if (mimeType === "application/pdf" && countPdfPages(req.file.buffer) > MAX_PDF_PAGES) {
+            res.status(413).json({ msg: `PDFs can be up to ${MAX_PDF_PAGES} pages.` });
             return;
         }
 
@@ -90,6 +135,7 @@ export const createUpload = async (req: AuthRequest, res: Response): Promise<voi
             patient,
             mimeType,
             sizeBytes: req.file.size,
+            contentHash: crypto.createHash("sha256").update(EXTRACTION_VERSION).update(req.file.buffer).digest("hex"),
             consentVersion: CONSENT_VERSION,
             consentedAt: new Date(now),
             fileExpiresAt,
@@ -191,6 +237,44 @@ export const extractUpload = async (req: AuthRequest, res: Response): Promise<vo
             upload.extractionFailure = reason;
         };
 
+        const applyExtraction = async (extraction: Extraction) => {
+            upload.extraction = extraction;
+            const failure = failureFor(extraction);
+            if (failure) {
+                needsManual(failure);
+                // Something that isn't a prescription has no purpose here, and could
+                // be anything, such as an ID card. An unreadable one stays for a preview.
+                if (failure === "not_a_prescription") {
+                    await PrescriptionFile.deleteOne({ upload: upload._id, patient: filter.patient });
+                    upload.fileExpiresAt = null;
+                    await recordRejectedUpload(String(filter.patient));
+                }
+            } else {
+                upload.status = "extracted";
+                upload.extractionFailure = null;
+            }
+            return failure;
+        };
+
+        // Asking again about a document already read would only pay for the same answer.
+        if (upload.extraction) {
+            await finish("reused");
+            return;
+        }
+
+        // The same file from the same patient. Never shared between patients.
+        const earlier = await PrescriptionUpload.findOne({
+            patient: filter.patient,
+            contentHash: upload.contentHash,
+            _id: { $ne: upload._id },
+            extraction: { $ne: null },
+        }).select("extraction");
+        if (upload.contentHash && earlier) {
+            await applyExtraction(earlier.extraction as Extraction);
+            await finish("reused");
+            return;
+        }
+
         const file = await PrescriptionFile.findOne({ upload: upload._id, patient: filter.patient });
         if (!file) {
             needsManual("file_expired");
@@ -212,14 +296,7 @@ export const extractUpload = async (req: AuthRequest, res: Response): Promise<vo
             return;
         }
 
-        upload.extraction = result.extraction;
-        const failure = failureFor(result.extraction);
-        if (failure) {
-            needsManual(failure);
-        } else {
-            upload.status = "extracted";
-            upload.extractionFailure = null;
-        }
+        const failure = await applyExtraction(result.extraction);
         await finish(failure ?? "ok", result.tokens, undefined, result.extraction.medications.length);
     } catch (err) {
         res.status(500).json({ msg: "Server error", err });

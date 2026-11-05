@@ -15,6 +15,16 @@ describe("rate limits in production", () => {
     beforeAll(startDatabase);
     afterAll(stopDatabase);
 
+    it("should limit how many accounts one network can create, even when each signup succeeds", async () => {
+        const app = createApp();
+        const signup = (i: number) => request(app).post("/api/auth/signup").send({ name: "New", email: `new${i}@example.test`, password: "long-enough-1" });
+
+        for (let i = 0; i < 10; i++) expect((await signup(i)).status).toBe(201);
+
+        expect((await signup(10)).status).toBe(429);
+        expect(await User.countDocuments({ email: "new10@example.test" })).toBe(0);
+    });
+
     it("should count failed logins, but not successful ones or other auth routes", async () => {
         const app = createApp();
         await User.create({ name: "Real", email: "real@example.test", password: await bcrypt.hash("right-password", 4), role: "Patient" });

@@ -130,8 +130,8 @@ describe('PrescriptionAssistant', () => {
     it('should tell the patient about the third party and retention before they consent', () => {
       setup();
 
-      expect(screen.getByText(/sent to OpenAI, a third-party AI provider/)).toBeInTheDocument();
-      expect(screen.getByText(/deleted when you confirm the details, or after 24 hours/)).toBeInTheDocument();
+      expect(screen.getByText(/Only upload a prescription.*sent to OpenAI, a third-party AI provider.*uploaded by mistake/)).toBeInTheDocument();
+      expect(screen.getByText(/deleted when you confirm the details, or after 24 hours.*deleted straight away/)).toBeInTheDocument();
       expect(screen.getByText(/deleted after 30 days/)).toBeInTheDocument();
     });
 
@@ -298,7 +298,7 @@ describe('PrescriptionAssistant', () => {
     it.each([
       ['extraction_unavailable', /couldn't read your document automatically/],
       ['budget_exceeded', /today's limit was reached/],
-      ['not_a_prescription', /doesn't look like a prescription/],
+      ['not_a_prescription', /doesn't look like a prescription, so nothing was read/],
       ['unreadable', /try a clearer photo/],
       ['file_expired', /original file has been deleted/],
     ])('should offer manual entry on %s', async (extractionFailure, message) => {
@@ -311,6 +311,20 @@ describe('PrescriptionAssistant', () => {
       expect(await screen.findByText(message)).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Add a medicine' })).toBeInTheDocument();
       expect(screen.getByText('No medicines listed.')).toBeInTheDocument();
+    });
+
+    it.each([
+      [false, true],
+      [true, false],
+    ])('should say the file was deleted only when the server confirms it (hasFile %s)', async (hasFile, saysDeleted) => {
+      const { user } = setup();
+      service.uploadPrescription.mockResolvedValue({ data: uploaded });
+      service.extractPrescription.mockResolvedValue({ data: { ...uploaded, status: 'needs_manual', extractionFailure: 'not_a_prescription', hasFile } });
+      await chooseFileAndConsent(user);
+      await user.click(screen.getByRole('button', { name: 'Upload and read' }));
+
+      const message = await screen.findByText(/doesn't look like a prescription/);
+      expect(message.textContent?.includes("We've deleted the file.")).toBe(saysDeleted);
     });
 
     it('should show the original as an authenticated preview and revoke the URL afterwards', async () => {

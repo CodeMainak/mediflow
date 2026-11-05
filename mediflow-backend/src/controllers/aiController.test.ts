@@ -359,6 +359,32 @@ describe("symptomChat", () => {
         expect(logged()).toEqual([expect.objectContaining({ reason })]);
     });
 
+    it("should reject an oversized transcript before paying for it", async () => {
+        const messages = Array.from({ length: 8 }, () => ({ role: "user" as const, content: "x".repeat(500) }));
+
+        const res = await call(messages);
+
+        expect(res.statusCode).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(budget.reserveAiCall).not.toHaveBeenCalled();
+    });
+
+    it.each(["???", "12345", "ab", "   !!!  "])("should not pay to triage %j", async (content) => {
+        const res = await call([{ role: "user", content }]);
+
+        expect(res.statusCode).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it.each(["सिर दर्द", "头很痛啊"])("should accept symptoms in any language: %j", async (content) => {
+        openAiReplies({ done: false, question: "How long has it lasted?", quickReplies: null });
+
+        const res = await call([{ role: "user", content }]);
+
+        expect(res.statusCode).toBe(200);
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
     it("should cap how many tokens one turn can cost", async () => {
         openAiReplies({ done: false, question: "How long has it lasted?", quickReplies: null });
 

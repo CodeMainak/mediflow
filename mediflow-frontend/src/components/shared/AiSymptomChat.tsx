@@ -42,7 +42,9 @@ export function describeError(err: unknown): string {
   const { status = 0, data } = response;
   if (status === 429) {
     // express-rate-limit sends its message as a plain string body.
-    return typeof data === 'string' && data ? data : 'Too many requests right now. Please wait a few minutes and try again.';
+    if (typeof data === 'string' && data) return data;
+    const limitMsg = (data as { msg?: unknown } | undefined)?.msg;
+    return typeof limitMsg === 'string' ? limitMsg : 'Too many requests right now. Please wait a few minutes and try again.';
   }
   const msg = (data as { msg?: unknown } | undefined)?.msg;
   if (status >= 400 && status < 500 && typeof msg === 'string') return msg;

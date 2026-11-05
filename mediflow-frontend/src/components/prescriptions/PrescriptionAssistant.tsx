@@ -67,7 +67,7 @@ export function validatePrescriptionFile(file: File): string | null {
 }
 
 const MANUAL_REASONS: Record<string, string> = {
-  not_a_prescription: "This doesn't look like a prescription. If it is one, you can type the details below.",
+  not_a_prescription: "This doesn't look like a prescription, so nothing was read from it. If it is one, you can upload a clearer copy or type the details below.",
   unreadable: "We couldn't read this document. You can try a clearer photo, or type the details below.",
   extraction_unavailable: "We couldn't read your document automatically right now. You can type the details below.",
   budget_exceeded: "Automatic reading isn't available right now because today's limit was reached. You can type the details below.",
@@ -120,7 +120,10 @@ const VerifyForm: React.FC<{
     setFindings((rows) => rows.map((r) => (r.key === key ? { ...r, text, low: false } : r)));
 
   const unreadable = upload.extraction?.unreadableMedicationLines ?? 0;
-  const failureMessage = upload.extractionFailure ? MANUAL_REASONS[upload.extractionFailure] : null;
+  // Only claim a deletion the server has confirmed.
+  const failureMessage = upload.extractionFailure
+    ? `${MANUAL_REASONS[upload.extractionFailure]}${upload.extractionFailure === 'not_a_prescription' && !upload.hasFile ? " We've deleted the file." : ''}`
+    : null;
   const lowCount = medications.filter((m) => m.low).length + findings.filter((f) => f.low).length;
 
   const submit = (e: React.FormEvent) => {
@@ -516,9 +519,9 @@ export const PrescriptionAssistant: React.FC = () => {
               <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 space-y-2">
                 <p className="font-medium text-gray-900">Before you upload</p>
                 <ul className="list-disc pl-5 space-y-1">
-                  <li>Your document is sent to OpenAI, a third-party AI provider, to read it.</li>
+                  <li>Only upload a prescription. Whatever you upload is sent to OpenAI, a third-party AI provider, to read it, including other documents uploaded by mistake.</li>
                   <li>Only you can open it here. Clinic staff can't.</li>
-                  <li>The original is deleted when you confirm the details, or after 24 hours at the latest.</li>
+                  <li>The original is deleted when you confirm the details, or after 24 hours at the latest. If it isn't a prescription, it's deleted straight away.</li>
                   <li>The details you confirm are deleted after 30 days. You can delete them sooner at any time.</li>
                   <li>This is a demo. Please don't upload real personal or medical documents.</li>
                 </ul>

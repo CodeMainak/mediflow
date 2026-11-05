@@ -76,6 +76,15 @@ export const authLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+// Every new account gets its own daily AI allowance, so accounts can't be free to mass-create.
+export const signupLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: process.env['NODE_ENV'] === 'production' ? 10 : 1000,
+    message: "Too many accounts created from this network, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
 // Rate limiting for general API endpoints
 export const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

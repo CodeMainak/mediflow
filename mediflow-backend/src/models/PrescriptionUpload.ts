@@ -10,6 +10,7 @@ export interface IPrescriptionUpload extends Document {
     patient: Schema.Types.ObjectId;
     mimeType: string;
     sizeBytes: number;
+    contentHash?: string;
     consentVersion: string;
     consentedAt: Date;
     status: PrescriptionStatus;
@@ -28,6 +29,7 @@ const prescriptionUploadSchema = new Schema<IPrescriptionUpload>(
         patient: { type: Schema.Types.ObjectId, ref: "User", required: true },
         mimeType: { type: String, required: true },
         sizeBytes: { type: Number, required: true },
+        contentHash: { type: String },
         consentVersion: { type: String, required: true },
         consentedAt: { type: Date, required: true },
         status: { type: String, enum: ["uploaded", "extracted", "needs_manual", "verified"], default: "uploaded" },
@@ -43,6 +45,7 @@ const prescriptionUploadSchema = new Schema<IPrescriptionUpload>(
 );
 
 prescriptionUploadSchema.index({ patient: 1, createdAt: -1 });
+prescriptionUploadSchema.index({ patient: 1, contentHash: 1 });
 prescriptionUploadSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export const PrescriptionUpload = model<IPrescriptionUpload>("PrescriptionUpload", prescriptionUploadSchema);
