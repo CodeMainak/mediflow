@@ -194,10 +194,11 @@ export const NotificationDropdown: React.FC = () => {
       <Button
         variant="ghost"
         size="icon"
+        aria-label="Notifications"
         className="relative hover:bg-green-50"
         onClick={() => setOpen(true)}
       >
-        <Bell className="h-6 w-6 text-gray-700" />
+        <Bell className="h-6 w-6 text-gray-700" aria-hidden="true" />
         {unreadCount > 0 && (
           <Badge
             variant="destructive"

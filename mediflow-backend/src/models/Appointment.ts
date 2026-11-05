@@ -36,11 +36,12 @@ const appointmentSchema = new Schema<IAppointment>(
 // Prevent double booking: Ensure doctor can't have multiple appointments at same date/time
 // This compound index ensures uniqueness only for non-cancelled appointments
 appointmentSchema.index(
-    { doctorId: 1, date: 1, time: 1, status: 1 },
+    { doctorId: 1, date: 1, time: 1 },
     {
         unique: true,
+        // Partial indexes can't use $nin, so this lists the statuses that hold a slot.
         partialFilterExpression: {
-            status: { $nin: ["cancelled", "rejected"] }
+            status: { $in: ["pending", "approved", "confirmed", "completed"] }
         }
     }
 );

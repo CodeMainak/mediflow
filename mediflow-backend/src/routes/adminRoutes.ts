@@ -7,6 +7,7 @@ import {
     deleteUser,
     getSystemStats,
     getActivityLog,
+    getAiUsage,
 } from "../controllers/adminController";
 import { protect, onlyRole } from "../middlewares/authMiddleware";
 
@@ -25,5 +26,6 @@ router.delete("/users/:userId", onlyRole(["Admin"]), deleteUser); // Only Admin 
 // System statistics and monitoring - Admin only
 router.get("/stats", onlyRole(["Admin"]), getSystemStats);
 router.get("/activity", onlyRole(["Admin"]), getActivityLog);
+router.get("/ai-usage", onlyRole(["Admin"]), getAiUsage);
 
 export default router;

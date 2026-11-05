@@ -200,17 +200,17 @@ export function AiSymptomChat<T>({ onMessage, renderResult, initialMessage }: Ai
           <Button
             type="submit"
             disabled={busy || !symptomsInput.trim()}
-            className="bg-green-600 hover:bg-green-700 text-white transition-colors"
+            className="bg-green-700 hover:bg-green-800 text-white transition-colors"
           >
             Check my symptoms
           </Button>
         </form>
       ) : (
         <div className="animate-fade-in-up space-y-4">
-          <p className="text-xs text-gray-400">For: "{opening}"</p>
+          <p className="text-xs text-gray-500">For: "{opening}"</p>
 
           {priorExchanges.length > 0 && (
-            <div className="space-y-1.5 text-xs text-gray-400 border-l-2 border-gray-100 pl-3">
+            <div className="space-y-1.5 text-xs text-gray-500 border-l-2 border-gray-100 pl-3">
               {priorExchanges.map((ex, i) => (
                 <div key={i}>
                   <span className="text-gray-500">{ex.q}</span> <span className="text-green-700 font-medium">{ex.a}</span>
@@ -256,7 +256,7 @@ export function AiSymptomChat<T>({ onMessage, renderResult, initialMessage }: Ai
                     size="icon"
                     aria-label="Send answer"
                     disabled={busy || !freeTextAnswer.trim()}
-                    className="bg-green-600 hover:bg-green-700 text-white shrink-0"
+                    className="bg-green-700 hover:bg-green-800 text-white shrink-0"
                   >
                     <Send className="h-4 w-4" aria-hidden="true" />
                   </Button>

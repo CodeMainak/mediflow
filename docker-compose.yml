@@ -34,7 +34,7 @@ services:
       - PORT=8000
       - NODE_ENV=${NODE_ENV:-production}
       - MONGO_URI=mongodb://${MONGO_USERNAME:-admin}:${MONGO_PASSWORD:-admin123}@mongodb:27017/mediflow?authSource=admin
-      - JWT_SECRET=${JWT_SECRET:-change-this-secret}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET before starting}
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
       - EMAIL_USER=${EMAIL_USER}
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}

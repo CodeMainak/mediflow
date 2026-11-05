@@ -8,6 +8,10 @@ import {
     buildSystemPrompt,
 } from "./aiController";
 
+// Quota logic has its own tests against a real database; here it just needs to say yes.
+const budget = vi.hoisted(() => ({ reserveAiCall: vi.fn(), recordAiOutcome: vi.fn() }));
+vi.mock("../services/aiBudget", () => budget);
+
 type Msg = { role: "user" | "assistant"; content: string };
 
 describe("isEmergencyText", () => {
@@ -258,6 +262,8 @@ describe("symptomChat", () => {
         vi.stubEnv("OPENAI_API_KEY", "test-key");
         vi.stubGlobal("fetch", fetchMock);
         fetchMock.mockReset();
+        budget.reserveAiCall.mockReset().mockResolvedValue("allowed");
+        budget.recordAiOutcome.mockReset();
         infoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
         warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     });
@@ -341,6 +347,24 @@ describe("symptomChat", () => {
 
         expect(res.body).toMatchObject({ done: true, mode: "fallback", specialization: "Orthopedics" });
         expect(logged()).toEqual([expect.objectContaining({ reason: "question_cap_ignored" })]);
+    });
+
+    it.each(["budget_exceeded", "budget_unavailable"])("should answer from the rules engine on %s without calling OpenAI", async (reason) => {
+        budget.reserveAiCall.mockResolvedValue(reason);
+
+        const res = await call([{ role: "user", content: "my knee hurts" }]);
+
+        expect(fetchMock).not.toHaveBeenCalled();
+        expect(res.body).toMatchObject({ done: false, mode: "fallback" });
+        expect(logged()).toEqual([expect.objectContaining({ reason })]);
+    });
+
+    it("should cap how many tokens one turn can cost", async () => {
+        openAiReplies({ done: false, question: "How long has it lasted?", quickReplies: null });
+
+        await call([{ role: "user", content: "sore throat" }]);
+
+        expect(JSON.parse(fetchMock.mock.calls[0][1].body).max_completion_tokens).toBe(400);
     });
 
     it("should not call OpenAI without an API key", async () => {

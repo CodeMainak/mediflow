@@ -23,8 +23,7 @@ export const createAppointment = async (req: AuthRequest, res: Response): Promis
 
         if (existingAppointment) {
             res.status(409).json({
-                msg: "This time slot is already booked. Please select another time.",
-                conflictingAppointment: existingAppointment
+                msg: "This time slot is already booked. Please select another time."
             });
             return;
         }
@@ -61,11 +60,13 @@ export const createAppointment = async (req: AuthRequest, res: Response): Promis
 export const updateAppointmentStatus = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
         const { status } = req.body;
+        const user = req.user as IUser;
 
-        const appointment = await Appointment.findByIdAndUpdate(
-            req.params['id'],
+        // A doctor can only change their own appointments; front-desk roles can change any.
+        const appointment = await Appointment.findOneAndUpdate(
+            { _id: req.params['id'], ...(user.role === "Doctor" && { doctorId: user._id }) },
             { status },
-            { new: true }
+            { new: true, runValidators: true }
         ).populate("patientId doctorId");
 
         if (!appointment) {
@@ -149,7 +150,11 @@ export const getAppointments = async (req: AuthRequest, res: Response): Promise<
 // ✅ Get single appointment
 export const getAppointmentById = async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-        const appointment = await Appointment.findById(req.params["id"])
+        const user = req.user as IUser;
+        // Patients and doctors only see appointments they're part of. Not found,
+        // rather than forbidden, so an id can't be probed for existence.
+        const scope = user.role === "Patient" ? { patientId: user._id } : user.role === "Doctor" ? { doctorId: user._id } : {};
+        const appointment = await Appointment.findOne({ _id: req.params["id"], ...scope })
             .populate("patientId", "name email phone")
             .populate("doctorId", "name email specialization");
 

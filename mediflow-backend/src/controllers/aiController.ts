@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { AuthRequest } from "../middlewares/authMiddleware";
 import { SymptomCheck } from "../models/SymptomCheck";
+import { reserveAiCall, recordAiOutcome } from "../services/aiBudget";
 
 type Urgency = "low" | "medium" | "high" | "emergency";
 type ChatRole = "user" | "assistant";
@@ -278,6 +279,8 @@ const OPENAI_TIMEOUT_MS = 8000;
 /** Why a turn fell back to the rules engine. Logged; never shown to the patient. */
 export type FallbackReason =
     | "no_api_key"
+    | "budget_exceeded"
+    | "budget_unavailable"
     | "timeout"
     | "network_error"
     | "http_error"
@@ -287,7 +290,7 @@ export type FallbackReason =
     | "schema_mismatch"
     | "question_cap_ignored";
 
-type AiOutcome = { ok: true; turn: AgentTurn } | { ok: false; reason: FallbackReason; status?: number };
+type AiOutcome = { ok: true; turn: AgentTurn; tokens: number } | { ok: false; reason: FallbackReason; status?: number };
 
 // Strict structured output: OpenAI constrains decoding to this schema, so the
 // reply always has these keys, types and enum values. Strict mode needs one
@@ -380,9 +383,13 @@ export function parseAgentTurn(raw: unknown): AgentTurn | null {
     return null;
 }
 
-async function requestAiTurn(messages: ChatMessage[]): Promise<AiOutcome> {
+async function requestAiTurn(messages: ChatMessage[], userId: string | null): Promise<AiOutcome> {
     const apiKey = process.env["OPENAI_API_KEY"];
     if (!apiKey) return { ok: false, reason: "no_api_key" };
+
+    // Over budget or unable to check: the rules engine still answers the patient.
+    const budget = await reserveAiCall("triage", userId);
+    if (budget !== "allowed") return { ok: false, reason: budget };
 
     const mustConclude = messages.filter((m) => m.role === "assistant").length >= MAX_QUESTIONS;
 
@@ -391,6 +398,7 @@ async function requestAiTurn(messages: ChatMessage[]): Promise<AiOutcome> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), OPENAI_TIMEOUT_MS);
     let content: unknown;
+    let tokens = 0;
     try {
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
@@ -402,6 +410,7 @@ async function requestAiTurn(messages: ChatMessage[]): Promise<AiOutcome> {
             body: JSON.stringify({
                 model: "gpt-4o-mini",
                 temperature: 0.3,
+                max_completion_tokens: 400,
                 response_format: TRIAGE_RESPONSE_FORMAT,
                 messages: [
                     { role: "system", content: buildSystemPrompt(mustConclude) },
@@ -417,6 +426,7 @@ async function requestAiTurn(messages: ChatMessage[]): Promise<AiOutcome> {
         const message = data?.choices?.[0]?.message;
         if (message?.refusal) return { ok: false, reason: "refusal" };
         content = message?.content;
+        tokens = Number(data?.usage?.total_tokens) || 0;
     } catch {
         return { ok: false, reason: controller.signal.aborted ? "timeout" : "network_error" };
     } finally {
@@ -435,7 +445,7 @@ async function requestAiTurn(messages: ChatMessage[]): Promise<AiOutcome> {
     const turn = parseAgentTurn(parsed);
     if (!turn) return { ok: false, reason: "schema_mismatch" };
     if (mustConclude && !turn.done) return { ok: false, reason: "question_cap_ignored" };
-    return { ok: true, turn };
+    return { ok: true, turn, tokens };
 }
 
 /**
@@ -482,11 +492,13 @@ export const symptomChat = async (req: AuthRequest, res: Response): Promise<void
         // an emergency never depends on OpenAI noticing it.
         const startedAt = Date.now();
         const emergency = hasEmergencyIndicator(messages);
-        const ai = emergency ? null : await requestAiTurn(messages);
+        const actorId = (req.user as any)?._id;
+        const ai = emergency ? null : await requestAiTurn(messages, actorId ? String(actorId) : null);
         const failure = ai && !ai.ok ? ai : undefined;
         const turn: AgentTurn = emergency ? EMERGENCY_TURN : ai && ai.ok ? ai.turn : fallbackAgentTurn(messages);
         const mode = emergency ? "safety" : ai && ai.ok ? "ai" : "fallback";
 
+        recordAiOutcome("triage", failure?.reason ?? mode, ai && ai.ok ? ai.tokens : 0);
         logTriageTurn({
             mode,
             reason: failure?.reason,
@@ -529,6 +541,15 @@ export const symptomChat = async (req: AuthRequest, res: Response): Promise<void
             selfCare,
             disclaimer: DISCLAIMER,
         });
+    } catch (err: any) {
+        res.status(500).json({ msg: "Server error", error: err.message });
+    }
+};
+
+export const deleteSymptomHistory = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        const { deletedCount } = await SymptomCheck.deleteMany({ patient: (req.user as any)?._id });
+        res.json({ deletedCount });
     } catch (err: any) {
         res.status(500).json({ msg: "Server error", error: err.message });
     }

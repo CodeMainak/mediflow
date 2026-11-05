@@ -8,3 +8,5 @@ export const chatSymptoms = (messages, signal) => api.post("/api/ai/symptom-chat
 export const chatSymptomsDemo = (messages, signal) => api.post("/api/ai/demo/symptom-chat", { messages }, { signal });
 
 export const getSymptomHistory = () => api.get("/api/ai/history");
+
+export const deleteSymptomHistory = () => api.delete("/api/ai/history");

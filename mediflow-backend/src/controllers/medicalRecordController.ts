@@ -51,8 +51,13 @@ export const getPatientRecords = async (req: AuthRequest, res: Response) => {
 // Delete medical record
 export const deleteMedicalRecord = async (req: AuthRequest, res: Response) => {
     try {
+        const doctor = req.user as IUser;
         const { id } = req.params;
-        await MedicalRecord.findByIdAndDelete(id);
+        const record = await MedicalRecord.findOneAndDelete({ _id: id, doctor: doctor._id });
+        if (!record) {
+            res.status(404).json({ msg: "Medical record not found" });
+            return;
+        }
         res.json({ msg: "Medical record deleted" });
     } catch (err) {
         res.status(500).json({ msg: "Server error", err });

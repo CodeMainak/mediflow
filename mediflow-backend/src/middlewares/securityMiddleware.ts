@@ -1,5 +1,52 @@
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { Request, Response, NextFunction } from "express";
+
+const PRODUCTION_FRONTEND = "https://mediflow-frontend-sigma.vercel.app";
+
+/**
+ * Origins allowed to call the API from a browser: the production frontend,
+ * FRONTEND_URL, and anything in the comma-separated ALLOWED_ORIGINS (custom
+ * domains, previews). Requests with no Origin, like curl or the keep-alive
+ * ping, aren't browser cross-origin calls, so CORS doesn't apply to them.
+ */
+export function isAllowedOrigin(origin: string | undefined): boolean {
+    if (!origin) return true;
+    const allowed = [
+        PRODUCTION_FRONTEND,
+        process.env["FRONTEND_URL"],
+        ...(process.env["ALLOWED_ORIGINS"] || "").split(","),
+    ].map((o) => o?.trim().replace(/\/$/, ""));
+    if (allowed.includes(origin)) return true;
+    return process.env["NODE_ENV"] !== "production" && /^http:\/\/localhost:\d+$/.test(origin);
+}
+
+export const corsOrigin = (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    callback(null, isAllowedOrigin(origin));
+};
+
+/**
+ * Many controllers put the caught error in their 500 response. This is the one
+ * place that stops those details reaching a client, for current code and any
+ * added later. It logs the route pattern and error name only: no ids, no
+ * bodies, and no error messages, which can quote patient data.
+ */
+export const hideServerErrorDetails = (req: Request, res: Response, next: NextFunction): void => {
+    const json = res.json.bind(res);
+    res.json = (body: any) => {
+        if (res.statusCode < 500 || !body || typeof body !== "object") return json(body);
+        const { err, error, stack, ...safe } = body;
+        const cause = err ?? error;
+        console.error(JSON.stringify({
+            event: "server_error",
+            route: `${req.method} ${req.baseUrl}${req.route?.path ?? ""}`,
+            status: res.statusCode,
+            errorName: cause instanceof Error ? cause.name : undefined,
+        }));
+        return json(safe);
+    };
+    next();
+};
 
 // Helmet configuration for security headers
 export const helmetMiddleware = helmet({
@@ -23,6 +70,8 @@ export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: process.env['NODE_ENV'] === 'production' ? 5 : 100, // More lenient in development
     message: "Too many login attempts, please try again after 15 minutes",
+    // Only failures count, so normal use can't lock anyone out.
+    skipSuccessfulRequests: true,
     standardHeaders: true,
     legacyHeaders: false,
 });
@@ -39,7 +88,7 @@ export const apiLimiter = rateLimit({
 // Stricter rate limiting for file upload endpoints
 export const uploadLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 20, // Limit each IP to 20 uploads per hour
+    max: process.env['NODE_ENV'] === 'production' ? 20 : 1000, // 20 uploads per IP per hour in production
     message: "Too many file uploads, please try again later",
     standardHeaders: true,
     legacyHeaders: false,

@@ -18,6 +18,7 @@ Any problem with the OpenAI call sends that turn to the rules engine, and the pa
 | Failure | Handling | Logged `reason` |
 | --- | --- | --- |
 | No API key | OpenAI isn't called | `no_api_key` |
+| Daily AI limit reached, or the count can't be checked | OpenAI isn't called | `budget_exceeded`, `budget_unavailable` |
 | No reply within 8 s, including the body (`OPENAI_TIMEOUT_MS`) | The request is aborted with `AbortController` | `timeout` |
 | Connection failure | Caught | `network_error` |
 | Non-2xx status | Status is logged | `http_error` + `status` |

@@ -43,9 +43,15 @@ Streaming helps when a model writes long prose that people start reading before 
 
 Instead, the app shows progress as soon as you submit, a slow-server notice, and Cancel. Streaming would be worth revisiting for a future prose feature, such as a long plain-language explanation of a result.
 
-## Manual checks (not covered by automated tests)
+## Browser checks
 
-- [ ] Chrome DevTools, Network set to **Slow 4G**: submit, check the status text, the slow notice after 4 s, and that Cancel works
-- [ ] DevTools set to **Offline**: answer a question, check the connection error and that **Try again** works once back online
-- [ ] Keyboard only: complete a full triage with Tab, Enter and Space; focus should always land on the next thing to do
-- [ ] Screen reader (VoiceOver: Cmd+F5): "Looking at your symptoms…", each new question, and errors are announced
+Run in real Chrome against a real backend, with OpenAI stubbed:
+
+- [x] Throttled network: status text appears at once, the slow notice after about 4 s, and Cancel works
+- [x] Offline: a clear connection error, the question stays, and **Try again** works once back online
+- [x] Keyboard only: a full triage with Tab and Enter; focus always lands on the next thing to do
+- [x] axe scan (WCAG A and AA): no serious or critical issues. It found and led to fixes for low-contrast text and an unnamed notification button
+
+Still needs a person:
+
+- [ ] Screen reader (VoiceOver: Cmd+F5): "Looking at your symptoms…", each new question, and errors are announced. Automated checks confirm the live regions and roles exist, but not how they actually sound
