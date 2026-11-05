@@ -5,6 +5,7 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes";
 import appointmentRoutes from "./routes/appointmentRoutes";
 import prescriptionRoutes from "./routes/prescriptionRoutes";
+import prescriptionAssistantRoutes from "./routes/prescriptionAssistantRoutes";
 import medicalRecordRoutes from "./routes/medicalRecordRoutes";
 import messageRoutes from "./routes/messageRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
@@ -48,6 +49,7 @@ export function createApp() {
     app.use("/api/auth", authRoutes);
     app.use("/api/appointments", appointmentRoutes);
     app.use("/api/prescriptions", prescriptionRoutes);
+    app.use("/api/prescription-assistant", prescriptionAssistantRoutes);
     app.use("/api/medical-records", medicalRecordRoutes);
     app.use("/api/messages", messageRoutes);
     app.use("/api/notifications", notificationRoutes);

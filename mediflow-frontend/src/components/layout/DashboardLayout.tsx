@@ -42,6 +42,7 @@ import {
   ShoppingCart,
   AlertTriangle,
   BarChart3,
+  FileSearch,
 } from "lucide-react";
 
 interface DashboardLayoutProps {
@@ -82,6 +83,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           ...baseItems,
           { id: "appointments", label: "My Appointments", icon: Calendar },
           { id: "prescriptions", label: "My Prescriptions", icon: Pill },
+          { id: "prescription-assistant", label: "Prescription Assistant", icon: FileSearch },
           { id: "messages", label: "Messages", icon: MessageSquare },
           { id: "profile", label: "My Profile", icon: User },
         ];

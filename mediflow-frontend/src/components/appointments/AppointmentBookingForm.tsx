@@ -12,12 +12,14 @@ import { toast } from 'sonner';
 interface AppointmentBookingFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  /** Preselects a doctor, e.g. when arriving from the prescription assistant. */
+  initialDoctorId?: string;
 }
 
-export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({ onSuccess, onCancel }) => {
+export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({ onSuccess, onCancel, initialDoctorId }) => {
   const [dateStr, setDateStr] = useState('');
   const [time, setTime] = useState('');
-  const [doctorId, setDoctorId] = useState('');
+  const [doctorId, setDoctorId] = useState(initialDoctorId ?? '');
   const [notes, setNotes] = useState('');
   const [doctors, setDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -153,7 +155,8 @@ export const AppointmentBookingForm: React.FC<AppointmentBookingFormProps> = ({ 
             <SelectContent style={{ zIndex: 99999 }}>
               {doctors.map((doctor: any) => {
                 // Handle both DoctorProfile (with user) and direct User objects
-                const doctorId = doctor._id || doctor.user?._id;
+                // A DoctorProfile's own _id isn't the doctor: appointments need the user id.
+                const doctorId = doctor.user?._id || doctor._id;
                 const doctorName = doctor.user?.name || doctor.name || 'Unknown Doctor';
                 const specialization = doctor.specialization;
 

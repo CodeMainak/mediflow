@@ -1,0 +1,36 @@
+{
+  "printed.png": {
+    "medications": [
+      "salbutamol",
+      "montelukast"
+    ],
+    "findings": [
+      "wheezing"
+    ],
+    "mustNotContain": [
+      "Dr. A. Example"
+    ]
+  },
+  "printed.pdf": {
+    "medications": [
+      "salbutamol",
+      "montelukast"
+    ],
+    "findings": [
+      "wheezing"
+    ],
+    "mustNotContain": [
+      "Dr. A. Example"
+    ]
+  },
+  "handwritten.jpg": {
+    "medications": [
+      "metformin",
+      "atorvastatin"
+    ],
+    "findings": [
+      "knee pain"
+    ],
+    "mustNotContain": []
+  }
+}
