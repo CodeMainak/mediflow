@@ -235,8 +235,7 @@ function validateVerified(body: any): VerifiedDetails | string {
     const cleanMedications: VerifiedDetails["medications"] = [];
     for (const m of medications) {
         if (typeof m?.name !== "string" || !m.name.trim() || m.name.length > 80) return "Each medicine needs a name of up to 80 characters.";
-        if (m.details !== null && m.details !== undefined && (typeof m.details !== "string" || m.details.length > 200)) return "Medicine details can be up to 200 characters.";
-        cleanMedications.push({ name: m.name.trim(), details: m.details?.trim() || null });
+        cleanMedications.push({ name: m.name.trim() }); // only the name: doses aren't collected
     }
     const cleanFindings: string[] = [];
     for (const f of findings) {

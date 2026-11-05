@@ -1,7 +1,7 @@
 import { baseMatch, isEmergencyText, mentions } from "../controllers/aiController";
 
 export interface VerifiedDetails {
-    medications: { name: string; details: string | null }[];
+    medications: { name: string }[];
     findings: string[];
 }
 

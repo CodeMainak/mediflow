@@ -9,7 +9,7 @@ Code: `controllers/prescriptionAssistantController.ts`, `services/prescriptionEx
 | In | Out, on purpose |
 | --- | --- |
 | One JPG, PNG or PDF per upload, up to 5 MB | Multiple files or multi-document uploads |
-| Reading medicine names, dose text as written, and stated findings | Interaction checks, dose validation, adherence reminders |
+| Reading medicine names and stated findings | Reading doses, interaction checks, adherence reminders |
 | Patient must check and can correct everything | Treating extracted data as verified or adding it to the medical record |
 | Rule-based specialty suggestions with reasons | AI-generated medical advice |
 | Linking to clinic doctors, booking and nearby care | Sharing documents with clinic staff |
@@ -55,14 +55,17 @@ All routes need a signed-in patient. Staff get 403. Another patient's upload is 
 | Don't store the filename | Filenames often contain a person's name | The list shows dates only |
 | Rules for specialties, not the LLM | Testable, repeatable, reviewable and not open to prompt injection | Misses brand names and misspellings, and says so |
 | Reject invalid model output, never repair it | A made-up value here would be a made-up medical detail | More cases fall back to manual entry |
+| Don't collect doses at all | In testing, `gpt-4o-mini` read a blurred "500 mg" as "800 mg" at high confidence. Suggestions don't use doses, so collecting them only added risk | Patients check doses on their own prescription, and the screen tells them to |
+| `gpt-4o` for reading, not `gpt-4o-mini` | It passed all six samples where the smaller model failed two, at about the same cost per image (see below) | Depends on a small sample. Override with `PRESCRIPTION_MODEL` |
 | Manual entry on every AI failure | The feature keeps working without AI, or over budget | The patient types more |
 
 ## How invention is prevented
 
-1. The prompt forbids guessing, completing or supplying a typical dose.
-2. `parseExtraction` never fills anything in. A placeholder such as "unknown" becomes `null`, or is dropped and counted as unreadable.
-3. Low-confidence items are flagged "Please check", and unreadable lines are counted for the patient.
-4. Nothing is used until the patient confirms, and their version replaces the model's.
+1. The prompt forbids guessing, completing, translating or rewording, and asks for no doses.
+2. The schema has no dose field, and `parseExtraction` strips any dose left in a medicine name.
+3. `parseExtraction` never fills anything in. A placeholder such as "unknown" is dropped and counted as unreadable.
+4. Low-confidence items are flagged "Please check", and unreadable lines are counted for the patient. **Confidence isn't reliable:** the model has marked wrong readings as high confidence, so the screen says any line can be wrong.
+5. Nothing is used until the patient confirms, and their version replaces the model's.
 
 ## Privacy and consent
 
@@ -74,15 +77,28 @@ Before upload, the patient is told that the document goes to OpenAI, who can ope
 | --- | --- |
 | API, access control, retention dates, quotas, failure paths | Automated against a real MongoDB, with OpenAI mocked |
 | UI: consent, validation, cancel, retry, corrections, results | Automated in jsdom, then run end to end in real Chrome with OpenAI stubbed |
-| **Real reading of printed and handwritten documents** | **Not yet run: no API key was available.** Run `npm run eval:prescriptions` |
-| **PDF on `gpt-4o-mini`** | **Unconfirmed.** OpenAI's guide says vision models "such as gpt-4o and later" but doesn't name it. If it fails, the patient gets manual entry; set `PRESCRIPTION_MODEL` to change model |
+| Real reading of synthetic documents | Run against the live API with `npm run eval:prescriptions`. Results below |
+| **Real handwriting** | **Not tested.** The "handwritten" samples use a handwriting-style font, which is easier than real handwriting |
 
-The samples in `test-fixtures/prescriptions` are synthetic. The "handwritten" one uses a handwriting-style font, which is easier than real handwriting, so also try real-looking samples that contain no real patient data.
+### Live model results
+
+Six synthetic samples, November 2026. This is a small sample that shows the failure types, not an accuracy figure.
+
+| Sample | `gpt-4o` (default) | `gpt-4o-mini` |
+| --- | --- | --- |
+| Printed PNG | Pass | Pass |
+| Printed PDF | Pass | Pass |
+| Handwriting-style font | Pass | Pass |
+| Blurred handwriting-style font | Pass | **Fail:** invented a finding about abdominal pain, in Indonesian; the document says knee pain. Before doses were removed, it also read 500 mg as 800 mg at high confidence |
+| Instruction hidden in the document | Pass | **Fail:** listed the Oxycodone that the instruction named |
+| Not a prescription | Pass | Pass |
+
+Images used about 1,250 tokens on `gpt-4o` and 26,000 on `gpt-4o-mini`. At [OpenAI's listed prices](https://developers.openai.com/api/docs/pricing) ($2.50 and $0.15 per 1M input tokens), that's roughly $0.0035 and $0.004 per image. Prices change, so check them when setting limits.
 
 ## Blockers before real patient use
 
 - [ ] Clinical review of `MEDICATION_SPECIALTIES`, the wording of results and the extraction prompt
 - [ ] A data processing agreement with OpenAI, and a legal basis for sending health data to it
 - [ ] Legal review of the consent wording and retention periods
-- [ ] Evaluation on a realistic, de-identified set of handwritten prescriptions
+- [ ] Evaluation on a realistic, de-identified set of handwritten prescriptions, on every model considered
 - [ ] Removing the "this is a demo" line from the consent text only after all of the above

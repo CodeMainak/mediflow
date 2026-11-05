@@ -12,10 +12,19 @@ dotenv.config();
 const DIR = path.join(__dirname, "../test-fixtures/prescriptions");
 const MIME: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".pdf": "application/pdf" };
 
+// Allows small misreadings of a blurred word, while still catching a different medicine.
+function similar(a: string, b: string): boolean {
+    const shared = [...new Set(a)].filter((c) => b.includes(c)).length;
+    return a[0] === b[0] && shared / new Set(b).size >= 0.7;
+}
+
 interface Expected {
     medications: string[];
     findings: string[];
     mustNotContain: string[];
+    mayMissMedications?: boolean; // too blurred to expect a full read; inventing is still a failure
+    notPrescription?: boolean;
+    allowedFindingWords?: string[]; // every finding must contain one of these
 }
 
 async function main() {
@@ -38,15 +47,26 @@ async function main() {
         const { medications, findings } = result.extraction;
         const names = medications.map((m) => m.name.toLowerCase());
         const notes = findings.map((f) => f.text.toLowerCase()).join(" | ");
-        const missed = want.medications.filter((m) => !names.some((n) => n.includes(m)));
-        const invented = medications.filter((m) => !want.medications.some((w) => m.name.toLowerCase().includes(w))).map((m) => m.name);
+        const missed = want.mayMissMedications ? [] : want.medications.filter((m) => !names.some((n) => n.includes(m)));
+        const invented = medications
+            .filter((m) => !want.medications.some((w) => m.name.toLowerCase().split(/\s+/).some((word) => word.includes(w) || (want.mayMissMedications && similar(word, w)))))
+            .map((m) => m.name);
+        const dosesKept = medications.filter((m) => /\d\s*(mg|mcg|ml|g)\b/i.test(m.name)).map((m) => m.name);
+        const inventedFindings = want.allowedFindingWords
+            ? findings.filter((f) => !want.allowedFindingWords!.some((w) => f.text.toLowerCase().includes(w))).map((f) => f.text)
+            : [];
+        const wrongKind = result.extraction.isPrescription === !!want.notPrescription;
         const missedFindings = want.findings.filter((f) => !notes.includes(f));
         const leaked = want.mustNotContain.filter((t) => JSON.stringify(result.extraction).includes(t));
-        const ok = !missed.length && !invented.length && !missedFindings.length && !leaked.length;
+        const ok = !missed.length && !invented.length && !dosesKept.length && !inventedFindings.length && !wrongKind && !missedFindings.length && !leaked.length;
         if (!ok) failures++;
 
-        console.log(`${ok ? "PASS" : "FAIL"} ${file}: ${result.tokens} tokens, legibility ${result.extraction.legibility}`);
+        console.log(`${ok ? "PASS" : "FAIL"} ${file}: ${result.tokens} tokens, isPrescription ${result.extraction.isPrescription}, legibility ${result.extraction.legibility}, unreadable lines ${result.extraction.unreadableMedicationLines}`);
         console.log(`  read: ${medications.map((m) => `${m.name} [${m.confidence}]`).join(", ") || "none"}`);
+        if (findings.length) console.log(`  findings: ${findings.map((f) => `${f.text} [${f.confidence}]`).join(", ")}`);
+        if (inventedFindings.length) console.log(`  INVENTED findings: ${inventedFindings.join(", ")}`);
+        if (wrongKind) console.log(`  wrong isPrescription: ${result.extraction.isPrescription}`);
+        if (dosesKept.length) console.log(`  DOSE KEPT in a name: ${dosesKept.join(", ")}`);
         if (missed.length) console.log(`  missed medicines: ${missed.join(", ")}`);
         if (invented.length) console.log(`  INVENTED medicines: ${invented.join(", ")}`);
         if (missedFindings.length) console.log(`  missed findings: ${missedFindings.join(", ")}`);

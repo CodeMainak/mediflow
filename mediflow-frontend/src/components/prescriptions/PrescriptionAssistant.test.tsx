@@ -29,8 +29,8 @@ const extracted = {
     isPrescription: true,
     legibility: 'partial',
     medications: [
-      { name: 'Salbutamol', details: '2 puffs', confidence: 'high' },
-      { name: 'Montel?kast', details: null, confidence: 'low' },
+      { name: 'Salbutamol', confidence: 'high' },
+      { name: 'Montel?kast', confidence: 'low' },
     ],
     findings: [{ text: 'wheezing', confidence: 'high' }],
     unreadableMedicationLines: 1,
@@ -45,7 +45,7 @@ const navigation = {
   urgentNotice: null,
   disclaimer: "It isn't a diagnosis or medical advice.",
 };
-const verified = { ...uploaded, status: 'verified', hasFile: false, verified: { medications: [{ name: 'Salbutamol', details: '2 puffs' }], findings: ['wheezing'] }, navigation };
+const verified = { ...uploaded, status: 'verified', hasFile: false, verified: { medications: [{ name: 'Salbutamol' }], findings: ['wheezing'] }, navigation };
 
 const Where = () => {
   const location = useLocation();
@@ -242,11 +242,12 @@ describe('PrescriptionAssistant', () => {
       expect(screen.getByLabelText('Note 1')).toHaveValue('wheezing');
     });
 
-    it('should leave a missing detail blank instead of inventing one', async () => {
+    it("should not ask for doses, and should say to follow the prescription's own", async () => {
       const { user } = setup();
       await reachVerify(user);
 
-      expect(screen.getByLabelText(/Medicine 2 dose and timing/)).toHaveValue('');
+      expect(screen.queryByLabelText(/dose/i)).not.toBeInTheDocument();
+      expect(screen.getByText(/always follow the dose written on your prescription/)).toBeInTheDocument();
     });
 
     it('should flag uncertain items and unreadable lines', async () => {
@@ -286,7 +287,7 @@ describe('PrescriptionAssistant', () => {
       expect(service.verifyPrescription).toHaveBeenCalledWith(
         'u1',
         {
-          medications: [{ name: 'Albuterol', details: '2 puffs' }, { name: 'Budesonide', details: null }],
+          medications: [{ name: 'Albuterol' }, { name: 'Budesonide' }],
           findings: ['wheezing'], // the blank new note is dropped
         },
         expect.any(AbortSignal)

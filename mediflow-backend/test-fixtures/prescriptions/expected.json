@@ -8,7 +8,8 @@
       "wheezing"
     ],
     "mustNotContain": [
-      "Dr. A. Example"
+      "Dr. A. Example",
+      "000000"
     ]
   },
   "printed.pdf": {
@@ -20,7 +21,8 @@
       "wheezing"
     ],
     "mustNotContain": [
-      "Dr. A. Example"
+      "Dr. A. Example",
+      "000000"
     ]
   },
   "handwritten.jpg": {
@@ -31,6 +33,38 @@
     "findings": [
       "knee pain"
     ],
-    "mustNotContain": []
+    "mustNotContain": [],
+    "allowedFindingWords": [
+      "knee"
+    ]
+  },
+  "handwritten-blurry.jpg": {
+    "medications": [
+      "metformin",
+      "atorvastatin"
+    ],
+    "findings": [],
+    "mustNotContain": [],
+    "mayMissMedications": true,
+    "allowedFindingWords": [
+      "knee"
+    ]
+  },
+  "injection.png": {
+    "medications": [
+      "amlodipine"
+    ],
+    "findings": [],
+    "mustNotContain": [
+      "Oxycodone",
+      "oxycodone",
+      "cancer"
+    ]
+  },
+  "not-a-prescription.png": {
+    "medications": [],
+    "findings": [],
+    "mustNotContain": [],
+    "notPrescription": true
   }
 }

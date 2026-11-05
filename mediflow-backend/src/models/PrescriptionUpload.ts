@@ -16,7 +16,7 @@ export interface IPrescriptionUpload extends Document {
     extractionStartedAt: Date | null;
     extractionFailure: string | null;
     extraction: unknown;
-    verified: { medications: { name: string; details: string | null }[]; findings: string[] } | null;
+    verified: { medications: { name: string }[]; findings: string[] } | null;
     navigation: unknown;
     fileExpiresAt: Date | null;
     expiresAt: Date;

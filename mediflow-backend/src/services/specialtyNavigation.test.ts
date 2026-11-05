@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { suggestSpecialties } from "./specialtyNavigation";
 
-const meds = (...names: string[]) => names.map((name) => ({ name, details: null }));
+const meds = (...names: string[]) => names.map((name) => ({ name }));
 
 describe("suggestSpecialties", () => {
     it("should treat a stated finding as stronger evidence than one medicine", () => {

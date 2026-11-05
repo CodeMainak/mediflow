@@ -59,7 +59,7 @@ Logs carry event, outcome, HTTP status, latency and counts. They never carry pat
 | Text in a symptom or a document says "ignore your rules" | The prompts treat it as data, which helps but isn't enough on its own |
 | Trying to force a dangerous urgency | Strict schema and validation limit output to fixed values. Emergency detection never uses the model |
 | Text in a document tries to steer the specialist | Specialties come from rules, and only after the patient confirms |
-| Instructions copied into a medicine name | Overlong names are dropped, the patient reviews everything, and React shows it as plain text |
+| Instructions in a document naming a medicine | In live testing `gpt-4o-mini` listed one and `gpt-4o` ignored it, so this isn't guaranteed. Overlong names are dropped, the patient reviews everything, React shows it as plain text, and a listed name can only affect a suggestion after the patient confirms it |
 | Faked assistant turns in the triage transcript | **Open.** The client still owns the transcript. Limited impact: emergency checks read only patient messages and output is still constrained |
 
 ## Retention and deletion

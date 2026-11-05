@@ -24,7 +24,7 @@ type Confidence = 'high' | 'low';
 interface Extraction {
   isPrescription: boolean;
   legibility: 'clear' | 'partial' | 'unreadable';
-  medications: { name: string; details: string | null; confidence: Confidence }[];
+  medications: { name: string; confidence: Confidence }[];
   findings: { text: string; confidence: Confidence }[];
   unreadableMedicationLines: number;
 }
@@ -42,7 +42,7 @@ interface Upload {
   status: 'uploaded' | 'extracted' | 'needs_manual' | 'verified';
   extractionFailure: string | null;
   extraction: Extraction | null;
-  verified: { medications: { name: string; details: string | null }[]; findings: string[] } | null;
+  verified: { medications: { name: string }[]; findings: string[] } | null;
   navigation: Navigation | null;
   hasFile: boolean;
   createdAt: string;
@@ -77,18 +77,18 @@ const MANUAL_REASONS: Record<string, string> = {
 
 const STRENGTH_LABEL = { stronger: 'Stronger match', possible: 'Possible match' };
 
-type Row = { key: number; name: string; details: string; low: boolean };
+type Row = { key: number; name: string; low: boolean };
 type FindingRow = { key: number; text: string; low: boolean };
 
 const VerifyForm: React.FC<{
   upload: Upload;
   busy: boolean;
-  onSubmit: (details: { medications: { name: string; details: string | null }[]; findings: string[] }) => void;
+  onSubmit: (details: { medications: { name: string }[]; findings: string[] }) => void;
 }> = ({ upload, busy, onSubmit }) => {
   const nextKey = useRef(1000);
   const [medications, setMedications] = useState<Row[]>(() => {
-    if (upload.verified) return upload.verified.medications.map((m, key) => ({ key, name: m.name, details: m.details ?? '', low: false }));
-    return (upload.extraction?.medications ?? []).map((m, key) => ({ key, name: m.name, details: m.details ?? '', low: m.confidence === 'low' }));
+    if (upload.verified) return upload.verified.medications.map((m, key) => ({ key, name: m.name, low: false }));
+    return (upload.extraction?.medications ?? []).map((m, key) => ({ key, name: m.name, low: m.confidence === 'low' }));
   });
   const [findings, setFindings] = useState<FindingRow[]>(() => {
     if (upload.verified) return upload.verified.findings.map((text, key) => ({ key, text, low: false }));
@@ -114,8 +114,8 @@ const VerifyForm: React.FC<{
     };
   }, [upload._id, upload.hasFile]);
 
-  const updateMedication = (key: number, patch: Partial<Row>) =>
-    setMedications((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch, low: false } : r)));
+  const updateMedication = (key: number, name: string) =>
+    setMedications((rows) => rows.map((r) => (r.key === key ? { ...r, name, low: false } : r)));
   const updateFinding = (key: number, text: string) =>
     setFindings((rows) => rows.map((r) => (r.key === key ? { ...r, text, low: false } : r)));
 
@@ -126,9 +126,7 @@ const VerifyForm: React.FC<{
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit({
-      medications: medications
-        .filter((m) => m.name.trim())
-        .map((m) => ({ name: m.name.trim(), details: m.details.trim() || null })),
+      medications: medications.map((m) => ({ name: m.name.trim() })).filter((m) => m.name),
       findings: findings.map((f) => f.text.trim()).filter(Boolean),
     });
   };
@@ -142,8 +140,9 @@ const VerifyForm: React.FC<{
       )}
       {!failureMessage && (
         <p className="text-sm text-gray-600">
-          This was read automatically and can be wrong, especially for handwriting. Please compare it with your
-          prescription and fix anything that doesn't match. Nothing is used until you confirm.
+          This was read automatically. Any of it can be wrong, even if it isn't marked, so please compare every line with
+          your prescription and fix anything that doesn't match. We don't read doses: always follow the dose written on
+          your prescription. Nothing is used until you confirm.
         </p>
       )}
       {(upload.extraction?.legibility === 'partial' || unreadable > 0) && (
@@ -177,13 +176,7 @@ const VerifyForm: React.FC<{
               <label htmlFor={`${ids}-med-${m.key}`} className="text-sm text-gray-700">
                 Medicine {i + 1} name
               </label>
-              <Input id={`${ids}-med-${m.key}`} value={m.name} maxLength={80} onChange={(e) => updateMedication(m.key, { name: e.target.value })} />
-            </div>
-            <div>
-              <label htmlFor={`${ids}-det-${m.key}`} className="text-sm text-gray-700">
-                Medicine {i + 1} dose and timing, as written (optional)
-              </label>
-              <Input id={`${ids}-det-${m.key}`} value={m.details} maxLength={200} onChange={(e) => updateMedication(m.key, { details: e.target.value })} />
+              <Input id={`${ids}-med-${m.key}`} value={m.name} maxLength={80} onChange={(e) => updateMedication(m.key, e.target.value)} />
             </div>
             <Button type="button" variant="ghost" size="sm" onClick={() => setMedications((rows) => rows.filter((r) => r.key !== m.key))}>
               Remove medicine {i + 1}
@@ -194,7 +187,7 @@ const VerifyForm: React.FC<{
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setMedications((rows) => [...rows, { key: nextKey.current++, name: '', details: '', low: false }])}
+          onClick={() => setMedications((rows) => [...rows, { key: nextKey.current++, name: '', low: false }])}
         >
           <Plus className="h-4 w-4" aria-hidden="true" /> Add a medicine
         </Button>
@@ -460,7 +453,7 @@ export const PrescriptionAssistant: React.FC = () => {
     setFileError('');
   };
 
-  const submitVerification = (details: { medications: { name: string; details: string | null }[]; findings: string[] }) => {
+  const submitVerification = (details: { medications: { name: string }[]; findings: string[] }) => {
     if (!current) return;
     const id = current._id;
     run(async (controller) => {

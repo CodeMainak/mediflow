@@ -17,7 +17,7 @@ const PNG = fixture("printed.png");
 const reading = {
     isPrescription: true,
     legibility: "clear",
-    medications: [{ name: "Salbutamol inhaler", details: "2 puffs when needed", confidence: "high" }],
+    medications: [{ name: "Salbutamol inhaler", confidence: "high" }],
     findings: [{ text: "wheezing and cough", confidence: "high" }],
     unreadableMedicationLines: 0,
 };
@@ -343,12 +343,12 @@ describe("prescription assistant API", () => {
     });
 
     describe("verification", () => {
-        const verified = { confirmed: true, medications: [{ name: "Salbutamol", details: "2 puffs" }], findings: ["wheezing"] };
+        const verified = { confirmed: true, medications: [{ name: "Salbutamol" }], findings: ["wheezing"] };
 
         it("should use the patient's corrections, not the model's reading", async () => {
             const { auth } = await signedInUser("Patient");
             const { body } = await upload(auth);
-            openAiReturns({ ...reading, medications: [{ name: "Metformin", details: null, confidence: "low" }], findings: [] });
+            openAiReturns({ ...reading, medications: [{ name: "Metformin", confidence: "low" }], findings: [] });
             await request(app).post(`${API}/${body._id}/extract`).set(auth);
 
             const res = await request(app).put(`${API}/${body._id}/verification`).set(auth).send(verified);
@@ -356,6 +356,16 @@ describe("prescription assistant API", () => {
             expect(res.body.status).toBe("verified");
             expect(res.body.verified.medications[0].name).toBe("Salbutamol");
             expect(res.body.navigation.suggestions[0].specialization).toBe("Pulmonology");
+        });
+
+        it("should not store a dose even if one is sent", async () => {
+            const { auth } = await signedInUser("Patient");
+            const { body } = await upload(auth);
+
+            const res = await request(app).put(`${API}/${body._id}/verification`).set(auth).send({ ...verified, medications: [{ name: "Salbutamol", details: "800 mg" }] });
+
+            expect(res.body.verified.medications).toEqual([{ name: "Salbutamol" }]);
+            expect(JSON.stringify(await PrescriptionUpload.findById(body._id).lean())).not.toContain("800 mg");
         });
 
         it("should give no suggestion until the patient has confirmed", async () => {
