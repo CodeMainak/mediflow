@@ -1,6 +1,7 @@
 import { Server as SocketIOServer } from "socket.io";
 import { Server as HTTPServer } from "http";
 import jwt from "jsonwebtoken";
+import { corsOrigin } from "../middlewares/securityMiddleware";
 
 interface UserSocket {
     userId: string;
@@ -13,13 +14,9 @@ const onlineUsers = new Map<string, string>(); // userId -> socketId
 export const initializeSocket = (httpServer: HTTPServer) => {
     const io = new SocketIOServer(httpServer, {
         cors: {
-            // Matches the REST API's CORS policy (server.ts) — the frontend
-            // is deployed across multiple origins (Vercel default domain,
-            // custom domain), so this reflects the request's own origin
-            // rather than checking against one hardcoded FRONTEND_URL.
-            origin: true,
+            // Same allowlist as the REST API (securityMiddleware).
+            origin: corsOrigin,
             methods: ["GET", "POST"],
-            credentials: true,
         },
     });
 
@@ -32,7 +29,7 @@ export const initializeSocket = (httpServer: HTTPServer) => {
         }
 
         try {
-            const decoded = jwt.verify(token, process.env.JWT_SECRET || "Mainak@123");
+            const decoded = jwt.verify(token, process.env.JWT_SECRET as string, { algorithms: ["HS256"] });
             (socket as any).userId = (decoded as any).id;
             next();
         } catch (error) {

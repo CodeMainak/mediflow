@@ -1,29 +1,49 @@
 import { Request, Response } from "express";
-import { User } from "../models/User";
+import { User, IUser } from "../models/User";
 import { Appointment } from "../models/Appointment";
 import { MedicalRecord } from "../models/MedicalRecord";
 import { Prescription } from "../models/Prescription";
+import { SymptomCheck } from "../models/SymptomCheck";
+import { SavedPlace } from "../models/SavedPlace";
+import { PrescriptionUpload } from "../models/PrescriptionUpload";
+import { PrescriptionFile } from "../models/PrescriptionFile";
+import { AuthRequest } from "../middlewares/authMiddleware";
+import { getUsageSummary } from "../services/aiBudget";
 import bcrypt from "bcryptjs";
+
+const ALL_ROLES: IUser["role"][] = ["Doctor", "Patient", "Receptionist", "Admin", "Pharmacist"];
+const RECEPTIONIST_MANAGED_ROLES: IUser["role"][] = ["Patient", "Doctor"];
+const EDITABLE_USER_FIELDS = [
+    "name", "email", "role", "specialization", "phone", "address",
+    "dateOfBirth", "gender", "bloodGroup", "allergies", "emergencyContact",
+];
+
+function rolesCreatableBy(req: AuthRequest): IUser["role"][] {
+    return (req.user as IUser).role === "Admin" ? ALL_ROLES : RECEPTIONIST_MANAGED_ROLES;
+}
 
 // Get all users with filtering and pagination
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { role, search, page = 1, limit = 10 } = req.query;
+        const { role, search, page = 1 } = req.query;
+        const limit = Math.min(Math.max(Number(req.query["limit"]) || 10, 1), 100);
 
         const query: any = {};
 
-        if (role) {
+        if (typeof role === "string") {
             query.role = role;
         }
 
-        if (search) {
+        if (typeof search === "string" && search) {
+            // Treated as literal text: user input must not be able to run as a regex.
+            const literal = search.slice(0, 100).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             query.$or = [
-                { name: { $regex: search, $options: "i" } },
-                { email: { $regex: search, $options: "i" } },
+                { name: { $regex: literal, $options: "i" } },
+                { email: { $regex: literal, $options: "i" } },
             ];
         }
 
-        const skip = (Number(page) - 1) * Number(limit);
+        const skip = (Math.max(Number(page), 1) - 1) * Number(limit);
 
         const users = await User.find(query)
             .select("-password")
@@ -78,6 +98,15 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
             allergies, emergencyContact,
         } = req.body;
 
+        if (typeof name !== "string" || typeof email !== "string" || typeof password !== "string" || password.length < 8) {
+            res.status(400).json({ message: "A name, email and a password of at least 8 characters are required" });
+            return;
+        }
+        if (!rolesCreatableBy(req as AuthRequest).includes(role)) {
+            res.status(403).json({ message: "You can't create a user with this role" });
+            return;
+        }
+
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -119,10 +148,27 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { userId } = req.params;
-        const updates = req.body;
+        const actor = (req as AuthRequest).user as IUser;
 
-        // Don't allow password update through this endpoint
-        delete updates.password;
+        // Only known profile fields can change. This blocks the password, and
+        // keeps any other field from being written straight to the database.
+        const updates: Record<string, unknown> = {};
+        for (const field of EDITABLE_USER_FIELDS) {
+            if (req.body?.[field] !== undefined) updates[field] = req.body[field];
+        }
+
+        if (actor.role !== "Admin") {
+            // Front-desk staff manage patients and doctors, and can't change anyone's role.
+            const target = await User.findById(userId).select("role");
+            if (target && !RECEPTIONIST_MANAGED_ROLES.includes(target.role)) {
+                res.status(403).json({ message: "You can't edit this user" });
+                return;
+            }
+            if (updates["role"] !== undefined && updates["role"] !== target?.role) {
+                res.status(403).json({ message: "Only an admin can change a user's role" });
+                return;
+            }
+        }
 
         const user = await User.findByIdAndUpdate(userId, updates, {
             new: true,
@@ -154,6 +200,14 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
             res.status(404).json({ message: "User not found" });
             return;
         }
+
+        // A deleted account's health data goes with it.
+        await Promise.all([
+            SymptomCheck.deleteMany({ patient: userId }),
+            SavedPlace.deleteMany({ patient: userId }),
+            PrescriptionUpload.deleteMany({ patient: userId }),
+            PrescriptionFile.deleteMany({ patient: userId }),
+        ]);
 
         res.status(200).json({
             message: "User deleted successfully",
@@ -252,5 +306,15 @@ export const getActivityLog = async (req: Request, res: Response): Promise<void>
         });
     } catch (error) {
         res.status(500).json({ message: "Failed to retrieve activity log" });
+    }
+};
+
+// AI usage totals. Aggregate counts only: no per-user rows and no patient text.
+export const getAiUsage = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const days = Math.min(Math.max(Number(req.query["days"]) || 7, 1), 35);
+        res.json(await getUsageSummary(days));
+    } catch (error) {
+        res.status(500).json({ message: "Failed to load AI usage" });
     }
 };

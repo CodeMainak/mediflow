@@ -19,6 +19,7 @@ const PatientDashboard = lazy(() => import('./components/dashboard/PatientDashbo
 const ReceptionistDashboard = lazy(() => import('./components/dashboard/ReceptionistDashboard').then(module => ({ default: module.ReceptionistDashboard })));
 const PatientList = lazy(() => import('./components/patients/PatientList').then(module => ({ default: module.PatientList })));
 const AppointmentManager = lazy(() => import('./components/appointments/AppointmentManager').then(module => ({ default: module.AppointmentManager })));
+const PrescriptionAssistant = lazy(() => import('./components/prescriptions/PrescriptionAssistant').then(module => ({ default: module.PrescriptionAssistant })));
 const PrescriptionManager = lazy(() => import('./components/prescriptions/PrescriptionManager').then(module => ({ default: module.PrescriptionManager })));
 const ProfileSettings = lazy(() => import('./components/profile/ProfileSettings').then(module => ({ default: module.ProfileSettings })));
 const ChatManager = lazy(() => import('./components/chat/ChatManager').then(module => ({ default: module.ChatManager })));
@@ -89,6 +90,7 @@ const DashboardRoutes: React.FC = () => {
     if (path === '/patients') return 'patients';
     if (path === '/appointments') return 'appointments';
     if (path === '/prescriptions') return 'prescriptions';
+    if (path === '/prescription-assistant') return 'prescription-assistant';
     if (path === '/messages') return 'messages';
     if (path === '/profile') return 'profile';
     if (path === '/settings') return 'settings';
@@ -126,6 +128,11 @@ const DashboardRoutes: React.FC = () => {
           <Route path="/patients" element={<RouteErrorBoundary routeName="Patients"><PatientList /></RouteErrorBoundary>} />
           <Route path="/appointments" element={<RouteErrorBoundary routeName="Appointments"><AppointmentManager /></RouteErrorBoundary>} />
           <Route path="/prescriptions" element={<RouteErrorBoundary routeName="Prescriptions"><PrescriptionManager /></RouteErrorBoundary>} />
+          <Route path="/prescription-assistant" element={
+            user?.role === 'Patient'
+              ? <RouteErrorBoundary routeName="Prescription Assistant"><PrescriptionAssistant /></RouteErrorBoundary>
+              : <Navigate to="/" replace />
+          } />
           <Route path="/messages" element={<RouteErrorBoundary routeName="Messages"><ChatManager /></RouteErrorBoundary>} />
           <Route path="/pharmacy/*" element={<RouteErrorBoundary routeName="Pharmacy"><PharmacyDashboard /></RouteErrorBoundary>} />
           <Route path="/profile" element={<RouteErrorBoundary routeName="Profile"><ProfileSettings /></RouteErrorBoundary>} />

@@ -28,10 +28,11 @@ router.patch("/:id/read", markAsRead);
 router.patch("/mark-all-read", markAllAsRead);
 
 // Delete a notification
+// Must come before /:id, or "clear-all" is treated as an id.
+router.delete("/clear-all", clearAllNotifications);
 router.delete("/:id", deleteNotification);
 
 // Clear all notifications
-router.delete("/clear-all", clearAllNotifications);
 
 // Send manual appointment reminder (Doctor, Receptionist, Admin only)
 router.post(

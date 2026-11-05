@@ -1,0 +1,70 @@
+{
+  "printed.png": {
+    "medications": [
+      "salbutamol",
+      "montelukast"
+    ],
+    "findings": [
+      "wheezing"
+    ],
+    "mustNotContain": [
+      "Dr. A. Example",
+      "000000"
+    ]
+  },
+  "printed.pdf": {
+    "medications": [
+      "salbutamol",
+      "montelukast"
+    ],
+    "findings": [
+      "wheezing"
+    ],
+    "mustNotContain": [
+      "Dr. A. Example",
+      "000000"
+    ]
+  },
+  "handwritten.jpg": {
+    "medications": [
+      "metformin",
+      "atorvastatin"
+    ],
+    "findings": [
+      "knee pain"
+    ],
+    "mustNotContain": [],
+    "allowedFindingWords": [
+      "knee"
+    ]
+  },
+  "handwritten-blurry.jpg": {
+    "medications": [
+      "metformin",
+      "atorvastatin"
+    ],
+    "findings": [],
+    "mustNotContain": [],
+    "mayMissMedications": true,
+    "allowedFindingWords": [
+      "knee"
+    ]
+  },
+  "injection.png": {
+    "medications": [
+      "amlodipine"
+    ],
+    "findings": [],
+    "mustNotContain": [
+      "Oxycodone",
+      "oxycodone",
+      "cancer"
+    ]
+  },
+  "not-a-prescription.png": {
+    "medications": [],
+    "findings": [],
+    "mustNotContain": [],
+    "notPrescription": true
+  }
+}

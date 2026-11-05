@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -45,7 +46,9 @@ export const AppointmentManager: React.FC = () => {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  // Arriving from "Book with Dr. X" opens the booking form with that doctor chosen.
+  const initialDoctorId = (useLocation().state as { bookDoctorId?: string } | null)?.bookDoctorId;
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(!!initialDoctorId);
   const [emptyStateDialogOpen, setEmptyStateDialogOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -184,6 +187,7 @@ export const AppointmentManager: React.FC = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <AppointmentBookingForm
+                  initialDoctorId={initialDoctorId}
                   onSuccess={async () => {
                     setBookingDialogOpen(false);
                     // Refresh appointments

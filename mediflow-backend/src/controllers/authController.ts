@@ -6,14 +6,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 
-const JWT_SECRET = process.env['JWT_SECRET'] || "supersecret";
-
 interface SignupRequest extends Request {
     body: {
         name: string;
         email: string;
         password: string;
-        role: "Doctor" | "Patient" | "Receptionist" | "Admin" | "Pharmacist";
     };
 }
 
@@ -26,7 +23,17 @@ interface LoginRequest extends Request {
 
 export const signup = async (req: SignupRequest, res: Response): Promise<void> => {
     try {
-        const { name, email, password, role } = req.body;
+        const { name, email, password } = req.body;
+
+        // Typed checks also stop query objects such as { "$ne": null } reaching Mongo.
+        if (typeof name !== "string" || !name.trim() || typeof email !== "string" || !/^\S+@\S+\.\S+$/.test(email)) {
+            res.status(400).json({ msg: "Please provide a valid name and email." });
+            return;
+        }
+        if (typeof password !== "string" || password.length < 8) {
+            res.status(400).json({ msg: "Password must be at least 8 characters." });
+            return;
+        }
 
         const existing = await User.findOne({ email });
         if (existing) {
@@ -35,9 +42,14 @@ export const signup = async (req: SignupRequest, res: Response): Promise<void> =
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({ name, email, password: hashedPassword, role });
+        // Self-signup is always a patient. Staff accounts are created by an admin;
+        // a role in the request body is ignored, or anyone could register as Admin.
+        const user = await User.create({ name, email, password: hashedPassword, role: "Patient" });
 
-        res.status(201).json({ msg: "User created", user });
+        res.status(201).json({
+            msg: "User created",
+            user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+        });
     } catch (err: any) {
         res.status(500).json({ msg: "Server error", error: err.message }); // return readable error
     }
@@ -46,6 +58,11 @@ export const signup = async (req: SignupRequest, res: Response): Promise<void> =
 export const login = async (req: LoginRequest, res: Response): Promise<void> => {
     try {
         const { email, password } = req.body;
+
+        if (typeof email !== "string" || typeof password !== "string") {
+            res.status(400).json({ msg: "Invalid credentials" });
+            return;
+        }
 
         const user = await User.findOne({ email });
         if (!user) {
@@ -62,7 +79,7 @@ export const login = async (req: LoginRequest, res: Response): Promise<void> => 
         const token = jwt.sign(
             { id: user._id, role: user.role },
             process.env["JWT_SECRET"],
-            { expiresIn: "1d" }
+            { algorithm: "HS256", expiresIn: "1d" }
         );
 
         // Return user object without password

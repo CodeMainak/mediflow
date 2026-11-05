@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 interface TriageResult {
-  mode: 'ai' | 'fallback';
+  mode: 'ai' | 'fallback' | 'safety';
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
@@ -60,8 +60,8 @@ const DemoSymptomChecker: React.FC = () => {
 
         <AiSymptomChat<TriageResult>
           initialMessage={carriedOverSymptoms}
-          onMessage={async (messages: ChatMessage[]) => {
-            const res = await chatSymptomsDemo(messages);
+          onMessage={async (messages: ChatMessage[], signal: AbortSignal) => {
+            const res = await chatSymptomsDemo(messages, signal);
             return res.data.done ? { done: true, result: res.data } : { done: false, question: res.data.question, quickReplies: res.data.quickReplies };
           }}
           renderResult={(result, reset) => (
@@ -106,7 +106,7 @@ const DemoSymptomChecker: React.FC = () => {
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400">{result.disclaimer}</p>
+                <p className="text-xs text-gray-500">{result.disclaimer}</p>
                 <Button size="sm" variant="ghost" className="text-gray-500 shrink-0" onClick={reset}>
                   <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                   Start over
@@ -134,7 +134,7 @@ export const DemoPreview: React.FC = () => {
           <span className="text-lg font-bold text-gray-900 tracking-tight">MediFlow</span>
         </Link>
         <Link to="/signup">
-          <Button className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+          <Button className="bg-green-700 hover:bg-green-800 text-white shadow-sm">
             Create your free account
           </Button>
         </Link>
@@ -144,7 +144,7 @@ export const DemoPreview: React.FC = () => {
         {/* Banner */}
         <div className="animate-fade-in-up flex items-center gap-3 bg-green-50 border border-green-100 rounded-2xl px-5 py-3.5 mb-8">
           <Sparkles className="h-5 w-5 text-green-600 shrink-0" />
-          <p className="text-sm text-green-800">
+          <p className="text-sm text-green-900">
             <span className="font-semibold">This is the real product, running live.</span>{' '}
             No account needed — nothing you type here is saved.
           </p>
@@ -167,7 +167,7 @@ export const DemoPreview: React.FC = () => {
           </p>
           <div className="flex items-center justify-center gap-3">
             <Link to="/signup">
-              <Button className="bg-green-600 hover:bg-green-700 text-white shadow-sm">
+              <Button className="bg-green-700 hover:bg-green-800 text-white shadow-sm">
                 Create your free account
               </Button>
             </Link>

@@ -6,11 +6,11 @@ import { Button } from '../ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
 import { AiSymptomChat, ChatMessage } from '../shared/AiSymptomChat';
 import { NearbyCareFinder } from './NearbyCareFinder';
-import { chatSymptoms, getSymptomHistory } from '../../services/aiService';
+import { chatSymptoms, deleteSymptomHistory, getSymptomHistory } from '../../services/aiService';
 import { Sparkles, AlertTriangle, RotateCcw, HeartPulse, Wand2, History, ChevronDown } from 'lucide-react';
 
 interface TriageResult {
-  mode: 'ai' | 'fallback';
+  mode: 'ai' | 'fallback' | 'safety';
   specialization: string;
   urgency: 'low' | 'medium' | 'high' | 'emergency';
   reasoning: string;
@@ -70,8 +70,8 @@ export const SymptomChecker: React.FC = () => {
       </CardHeader>
       <CardContent>
         <AiSymptomChat<TriageResult>
-          onMessage={async (messages: ChatMessage[]) => {
-            const res = await chatSymptoms(messages);
+          onMessage={async (messages: ChatMessage[], signal: AbortSignal) => {
+            const res = await chatSymptoms(messages, signal);
             if (res.data.done) {
               refreshHistory();
               return { done: true, result: res.data };
@@ -121,7 +121,7 @@ export const SymptomChecker: React.FC = () => {
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400 flex-1">{result.disclaimer}</p>
+                <p className="text-xs text-gray-500 flex-1">{result.disclaimer}</p>
                 <Button size="sm" variant="ghost" className="text-gray-500 shrink-0" onClick={reset}>
                   <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
                   Start over
@@ -149,11 +149,21 @@ export const SymptomChecker: React.FC = () => {
                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
                       <Badge className={`${URGENCY_STYLES[h.urgency]} text-[10px] py-0`}>{URGENCY_LABEL[h.urgency]}</Badge>
                       <Badge variant="outline" className="border-gray-200 text-gray-600 text-[10px] py-0">{h.specialization}</Badge>
-                      <span className="text-gray-400 ml-auto">{new Date(h.createdAt).toLocaleDateString()}</span>
+                      <span className="text-gray-500 ml-auto">{new Date(h.createdAt).toLocaleDateString()}</span>
                     </div>
                     <p className="text-gray-600">"{h.symptoms}"</p>
                   </div>
                 ))}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    deleteSymptomHistory().then(refreshHistory).catch(() => {});
+                  }}
+                >
+                  Delete all my past checks
+                </Button>
               </div>
             </CollapsibleContent>
           </Collapsible>

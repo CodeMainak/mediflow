@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { login, signup, getCurrentUser, updateProfile } from "../controllers/authController";
 import { protect } from "../middlewares/authMiddleware";
+import { authLimiter, signupLimiter } from "../middlewares/securityMiddleware";
 
 const router = Router();
 
-router.post("/signup", signup);
-router.post("/login", login);
+router.post("/signup", signupLimiter, authLimiter, signup);
+router.post("/login", authLimiter, login);
 router.get("/me", protect, getCurrentUser);
 router.patch("/profile", protect, updateProfile);
 

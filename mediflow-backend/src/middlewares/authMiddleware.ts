@@ -23,7 +23,7 @@ export const authMiddleware = (
 
     try {
         // Assert decoded is JwtPayload
-        const decoded = jwt.verify(token, process.env["JWT_SECRET"] as string) as JwtPayload;
+        const decoded = jwt.verify(token, process.env["JWT_SECRET"] as string, { algorithms: ["HS256"] }) as JwtPayload;
         req.user = decoded;
         next();
     } catch (err) {
@@ -63,7 +63,7 @@ export const protect = async (
 
     try {
 
-        const decoded = jwt.verify(token, process.env["JWT_SECRET"] as string) as JwtPayload;
+        const decoded = jwt.verify(token, process.env["JWT_SECRET"] as string, { algorithms: ["HS256"] }) as JwtPayload;
         const user = await User.findById(decoded["id"]).select("-password");
         if (!user) {
             res.status(401).json({ msg: "User not found" });
